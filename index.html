@@ -714,50 +714,19 @@
   });
 
   // IMPORT (SIMULATION / PLUG REAL ENDPOINT HERE)
-  els.btnImport.addEventListener('click', async () => {
-    const selected = parsedBatch.filter(r => r.selected && r.status !== 'error');
-    if (!selected.length) return alert("No importable rows selected (errors are blocked).");
+  const WORKER_URL = "https://5be0fc4c.importtool.pages.dev/api/bookings/add";
 
-    if (!confirm(`Import ${selected.length} selected trips?`)) return;
+const resp = await fetch(WORKER_URL, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(trip.payload)
+});
 
-    els.btnImport.innerText = "Importing…";
-    els.btnImport.disabled = true;
+const txt = await resp.text();
+if (!resp.ok) throw new Error(`Trip ${i+1} failed: ${resp.status} ${txt}`);
 
-    try {
-      for (let i = 0; i < selected.length; i++) {
-        const trip = selected[i];
-
-        console.log("POSTing to iCabbi:", trip.payload);
-
-        // ✅ REAL CALL (uncomment + fill in)
-        // const ICABBI_URL = "https://api.icabbi.us/us4/bookings/add";
-        // const AUTH_HEADER = "Basic YOUR_BASE64";
-        // const resp = await fetch(ICABBI_URL, {
-        //   method: "POST",
-        //   headers: {
-        //     "Content-Type": "application/json",
-        //     "Authorization": AUTH_HEADER
-        //   },
-        //   body: JSON.stringify(trip.payload)
-        // });
-        // if (!resp.ok) {
-        //   const txt = await resp.text();
-        //   throw new Error(`Row ${i+1} failed: ${resp.status} ${txt}`);
-        // }
-
-        await new Promise(r => setTimeout(r, 60));
-      }
-
-      alert("Batch processed! (Simulation) Check console logs.");
-    } catch (e) {
-      console.error(e);
-      alert("Import error: " + e.message);
-    } finally {
-      els.btnImport.innerText = "Import Selected to iCabbi";
-      renderAndUpdate();
-    }
-  });
 </script>
 
 </body>
 </html>
+
