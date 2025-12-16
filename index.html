@@ -3,140 +3,252 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>iCabbi Trip Import (Smart)</title>
+  <title>iCabbi Trip Import (Smart + Real Import via Worker)</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
+  <!-- SheetJS -->
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 
   <style>
-    :root {
+    :root{
       --primary:#4f46e5;
       --bg:#f3f4f6;
-      --card-bg:#ffffff;
-      --text-main:#1f2937;
+      --card:#ffffff;
+      --text:#1f2937;
+      --muted:#6b7280;
       --border:#e5e7eb;
-      --success-bg:#d1fae5; --success-text:#065f46;
-      --error-bg:#fee2e2; --error-text:#991b1b;
-      --warn-bg:#ffedd5; --warn-text:#9a3412;
-    }
-    *{box-sizing:border-box;}
-    body{
-      font-family:'Inter',sans-serif;
-      background:var(--bg);
-      padding:40px 20px;
-      color:var(--text-main);
-      margin:0;
-    }
-    .container{max-width:1280px;margin:0 auto;}
-    h1{margin:0 0 8px;font-size:24px;color:#111;}
-    p{color:#666;margin:0 0 24px;}
 
-    .card{
-      background:var(--card-bg);
-      border-radius:12px;
-      padding:24px;
-      box-shadow:0 4px 6px -1px rgba(0,0,0,.1);
-      margin-bottom:24px;
-      border:1px solid var(--border);
+      --ok-bg:#d1fae5; --ok-t:#065f46;
+      --warn-bg:#ffedd5; --warn-t:#9a3412;
+      --err-bg:#fee2e2; --err-t:#991b1b;
+      --info-bg:#dbeafe; --info-t:#1e40af;
     }
-    .grid-form{
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      padding:38px 18px;
+      background:var(--bg);
+      color:var(--text);
+      font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    }
+    .container{max-width:1320px;margin:0 auto}
+    h1{margin:0 0 8px;font-size:22px;font-weight:800;color:#111}
+    p{margin:0 0 22px;color:#555;line-height:1.4}
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:20px;
+      box-shadow:0 4px 14px rgba(0,0,0,.06);
+      margin-bottom:18px;
+    }
+
+    .grid{
       display:grid;
-      grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
-      gap:16px 20px;
+      grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+      gap:14px 16px;
       align-items:end;
     }
-    label{display:block;font-size:13px;font-weight:600;margin-bottom:8px;}
-    input, select{
+    label{display:block;font-size:12px;font-weight:800;margin-bottom:7px;color:#111}
+    input, select, textarea{
       width:100%;
-      padding:10px;
+      padding:10px 11px;
       border:1px solid var(--border);
-      border-radius:6px;
+      border-radius:10px;
       font-size:14px;
       background:#fff;
+      outline:none;
     }
+    textarea{min-height:64px;resize:vertical}
+    input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(79,70,229,.12)}
 
-    .file-drop{
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .grow{flex:1}
+    .hidden{display:none}
+
+    .drop{
       border:2px dashed #cbd5e1;
-      padding:24px;
-      text-align:center;
-      border-radius:8px;
-      cursor:pointer;
+      border-radius:12px;
+      padding:18px;
       background:#f8fafc;
-      transition:.2s;
+      cursor:pointer;
+      transition:.15s;
+      text-align:center;
+      font-weight:700;
+      color:#334155;
+      user-select:none;
     }
-    .file-drop:hover{border-color:var(--primary);background:#eef2ff;}
-    .file-drop.active{border-color:var(--primary);background:#e0e7ff;}
+    .drop:hover{border-color:var(--primary);background:#eef2ff}
+    .drop.active{border-color:var(--primary);background:#e0e7ff}
 
     .btn{
-      padding:12px 16px;
-      border-radius:6px;
-      font-weight:700;
       border:none;
+      border-radius:10px;
+      padding:11px 14px;
+      font-weight:900;
       cursor:pointer;
       font-size:14px;
-      transition:.2s;
+      transition:.15s;
       white-space:nowrap;
     }
-    .btn-primary{background:var(--primary);color:#fff;}
-    .btn-primary:hover{background:#4338ca;}
-    .btn-ghost{background:#fff;border:1px solid var(--border);color:#111;}
-    .btn-ghost:hover{background:#f9fafb;}
-    .btn:disabled{background:#9ca3af;cursor:not-allowed;border-color:#9ca3af;color:#fff;}
+    .btn-primary{background:var(--primary);color:#fff}
+    .btn-primary:hover{background:#4338ca}
+    .btn-ghost{background:#fff;border:1px solid var(--border);color:#111}
+    .btn-ghost:hover{background:#f9fafb}
+    .btn-danger{background:#dc2626;color:#fff}
+    .btn-danger:hover{background:#b91c1c}
+    .btn:disabled{opacity:.55;cursor:not-allowed}
 
-    .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
-    .grow{flex:1;}
-    .hidden{display:none;}
-    .muted{color:#6b7280;font-size:12px;}
-
-    .badge{
-      padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;
-      text-transform:uppercase;letter-spacing:.5px;display:inline-block;
-    }
-    .badge-ok{background:var(--success-bg);color:var(--success-text);}
-    .badge-err{background:var(--error-bg);color:var(--error-text);}
-    .badge-warn{background:var(--warn-bg);color:var(--warn-text);}
-
-    .table-header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;}
-    .table-wrap{overflow:auto;max-height:560px;border:1px solid var(--border);border-radius:8px;background:#fff;}
-    table{width:100%;border-collapse:collapse;font-size:13px;min-width:1100px;}
-    th{
-      position:sticky;top:0;background:#f9fafb;padding:12px 12px;text-align:left;
-      border-bottom:2px solid var(--border);font-weight:800;color:#6b7280;z-index:10;
-    }
-    td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top;}
-    tr:hover td{background:#f9fafb;}
-    .text-red{color:#dc2626;font-weight:700;}
     .pill{
-      display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);
+      display:inline-flex;align-items:center;gap:8px;
+      padding:8px 10px;border:1px solid var(--border);
       border-radius:999px;background:#fff;font-size:13px;
     }
-    .k{
-      font-weight:800;color:#111;
+    .k{font-weight:900;color:#111}
+
+    .badge{
+      display:inline-block;
+      padding:3px 9px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:1000;
+      letter-spacing:.4px;
+      text-transform:uppercase;
     }
-    .small-input{padding:8px 10px;font-size:13px;}
-    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
-    .nowrap{white-space:nowrap;}
+    .ok{background:var(--ok-bg);color:var(--ok-t)}
+    .warn{background:var(--warn-bg);color:var(--warn-t)}
+    .err{background:var(--err-bg);color:var(--err-t)}
+    .info{background:var(--info-bg);color:var(--info-t)}
+
+    .muted{color:var(--muted);font-size:12px}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+    .nowrap{white-space:nowrap}
+
+    .table-header{
+      display:flex;justify-content:space-between;align-items:center;gap:10px;
+      flex-wrap:wrap;margin-bottom:10px;
+    }
+    .table-wrap{
+      border:1px solid var(--border);
+      border-radius:12px;
+      overflow:auto;
+      background:#fff;
+      max-height:590px;
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      min-width:1280px;
+      font-size:13px;
+    }
+    th{
+      position:sticky;top:0;z-index:5;
+      background:#f9fafb;
+      border-bottom:2px solid var(--border);
+      text-align:left;
+      padding:12px;
+      color:#6b7280;
+      font-weight:1000;
+    }
+    td{
+      padding:10px 12px;
+      border-bottom:1px solid var(--border);
+      vertical-align:top;
+    }
+    tr:hover td{background:#f9fafb}
+
+    .text-red{color:#dc2626;font-weight:900}
+    .small{padding:9px 10px;font-size:13px;border-radius:10px}
+
+    .progress{
+      height:10px;border-radius:999px;background:#e5e7eb;overflow:hidden;border:1px solid var(--border);
+    }
+    .bar{height:100%;width:0%;background:var(--primary);transition:width .15s}
+    .panel-title{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    .panel-title h2{margin:0;font-size:16px;font-weight:1000;color:#111}
   </style>
 </head>
 <body>
-
 <div class="container">
-  <h1>iCabbi Trip Import (Smart)</h1>
-  <p>Upload your <b>Export.csv</b> or Excel file to preview, validate, and format trips for dispatch — with Pacific→UTC “Z” conversion, duplicate detection, filtering, selection, and JSON export.</p>
+  <h1>iCabbi Trip Import (Smart) — Real Import (GitHub Pages safe)</h1>
+  <p>
+    This version is built for <b>GitHub Pages</b>: it imports for real by calling a <b>serverless proxy</b> (Cloudflare Worker / Vercel / Netlify)
+    so your iCabbi <b>Basic Auth never lives in the browser</b>.
+  </p>
 
+  <!-- SETTINGS / WORKER -->
   <div class="card">
-    <div class="grid-form">
+    <div class="panel-title">
+      <h2>1) Proxy Settings</h2>
+      <span class="badge info">Required for real import</span>
+    </div>
 
-      <div style="grid-column: span 1 / -1;">
+    <div class="grid" style="margin-top:12px;">
+      <div style="grid-column: span 2 / -1;">
+        <label>Proxy Endpoint URL (your Worker / Function)</label>
+        <input id="proxyUrl" class="mono" placeholder="https://30197ee3.importtool.pages.dev/api/bookings/add" />
+        <div class="muted" style="margin-top:6px;">
+          Your proxy must accept <span class="mono">POST</span> and forward to <span class="mono">https://api.icabbi.us/us4/bookings/add</span> with Authorization on the server side.
+        </div>
+      </div>
+
+      <div>
+        <label>Concurrency</label>
+        <select id="concurrency">
+          <option value="1" selected>1 (Safest)</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Delay between requests</label>
+        <select id="delayMs">
+          <option value="0">0ms</option>
+          <option value="80" selected>80ms</option>
+          <option value="150">150ms</option>
+          <option value="250">250ms</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Safety mode</label>
+        <select id="safetyMode">
+          <option value="one" selected>First import only 1 trip (test)</option>
+          <option value="all">Allow importing selected trips</option>
+        </select>
+      </div>
+
+      <div>
+        <button id="btnSaveProxy" class="btn btn-ghost" style="width:100%;">Save Proxy URL</button>
+      </div>
+    </div>
+
+    <div class="muted" style="margin-top:12px;">
+      If you haven’t created the proxy yet: use your Cloudflare Worker and store <span class="mono">ICABBI_AUTH</span> as a secret there.
+      This page never asks for your Basic auth.
+    </div>
+  </div>
+
+  <!-- UPLOAD + PARSE -->
+  <div class="card">
+    <div class="panel-title">
+      <h2>2) Upload + Preview</h2>
+      <span class="badge info">Export.csv / xlsx</span>
+    </div>
+
+    <div class="grid" style="margin-top:12px;">
+      <div style="grid-column: span 2 / -1;">
         <label>Spreadsheet File</label>
-        <div class="file-drop" id="dropZone">
+        <div class="drop" id="dropZone">
           <span id="fileName">Click to select file or Drag & Drop here</span>
-          <input id="fileInput" type="file" accept=".csv, .xls, .xlsx" style="display:none;" />
+          <input id="fileInput" type="file" accept=".csv,.xls,.xlsx" style="display:none;" />
         </div>
         <div class="muted" style="margin-top:8px;">
-          Tip: your sample Export has headers like <span class="mono">Booking Id</span>, <span class="mono">Client Name</span>, <span class="mono">Schedule Time</span>, <span class="mono">Origin</span>, <span class="mono">Destination</span>, etc.
+          Works with headers like: <span class="mono">Booking Id</span>, <span class="mono">Client Name</span>, <span class="mono">Schedule Time</span>, <span class="mono">Origin</span>, <span class="mono">Destination</span>, etc.
         </div>
       </div>
 
@@ -162,14 +274,15 @@
       </div>
 
       <div>
-        <button id="btnParse" class="btn btn-primary" style="width:100%">Preview Trips</button>
+        <button id="btnParse" class="btn btn-primary" style="width:100%;">Preview Trips</button>
       </div>
-
     </div>
   </div>
 
+  <!-- RESULTS -->
   <div id="resultsArea" class="card hidden">
-    <div class="table-header">
+    <div class="panel-title">
+      <h2>3) Review + Import</h2>
       <div class="row">
         <span class="pill"><span class="k">Trips</span> <span id="tripCount">0</span></span>
         <span class="pill"><span class="k">Valid</span> <span id="validCount">0</span></span>
@@ -177,73 +290,99 @@
         <span class="pill"><span class="k">Errors</span> <span id="errCount">0</span></span>
         <span class="pill"><span class="k">Selected</span> <span id="selectedCount">0</span></span>
       </div>
+    </div>
 
-      <div class="row">
-        <input id="searchBox" class="small-input" placeholder="Search name / origin / destination / booking id..." style="min-width:320px;" />
-        <select id="filterMode" class="small-input" style="min-width:190px;">
-          <option value="all" selected>Show: All</option>
-          <option value="selected">Show: Selected</option>
-          <option value="valid">Show: Valid only</option>
-          <option value="warn">Show: Warnings only</option>
-          <option value="error">Show: Errors only</option>
-          <option value="dupes">Show: Duplicates only</option>
-        </select>
+    <div class="row" style="margin-top:12px;">
+      <input id="searchBox" class="small grow" placeholder="Search name / origin / destination / booking id..." />
+      <select id="filterMode" class="small" style="min-width:200px;">
+        <option value="all" selected>Show: All</option>
+        <option value="selected">Show: Selected</option>
+        <option value="valid">Show: Valid only</option>
+        <option value="warn">Show: Warnings only</option>
+        <option value="error">Show: Errors only</option>
+        <option value="dupes">Show: Duplicates only</option>
+        <option value="imported">Show: Imported only</option>
+        <option value="failed">Show: Failed only</option>
+      </select>
 
-        <button id="btnSelectValid" class="btn btn-ghost">Select all valid</button>
-        <button id="btnClearSelect" class="btn btn-ghost">Clear selection</button>
-        <button id="btnExportJson" class="btn btn-ghost">Export selected JSON</button>
+      <button id="btnSelectValid" class="btn btn-ghost">Select all valid</button>
+      <button id="btnClearSelect" class="btn btn-ghost">Clear selection</button>
+      <button id="btnExportJson" class="btn btn-ghost">Export selected JSON</button>
+      <button id="btnImport" class="btn btn-primary" disabled>Import Selected</button>
+    </div>
 
-        <button id="btnImport" class="btn btn-primary" disabled>Import Selected to iCabbi</button>
+    <div style="margin-top:12px;">
+      <div class="row" style="justify-content:space-between;">
+        <div class="muted" id="summaryText">Processing…</div>
+        <div class="muted mono" id="importStatus">Idle</div>
+      </div>
+      <div class="progress" style="margin-top:8px;">
+        <div class="bar" id="progressBar"></div>
       </div>
     </div>
 
-    <div class="muted" id="summaryText" style="margin-bottom:12px;">Processing…</div>
-
-    <div class="table-wrap">
-      <table id="dataTable">
+    <div class="table-wrap" style="margin-top:14px;">
+      <table>
         <thead>
-          <tr>
-            <th width="42" class="nowrap"><input id="checkAll" type="checkbox" /></th>
-            <th width="48">#</th>
-            <th class="nowrap">Booking ID</th>
-            <th>Name</th>
-            <th class="nowrap">Pickup (Local)</th>
-            <th class="nowrap">Pickup (UTC Z)</th>
-            <th>Origin</th>
-            <th>Destination</th>
-            <th>Status</th>
-            <th>Errors / Warnings / Instructions</th>
-          </tr>
+        <tr>
+          <th width="40" class="nowrap"><input id="checkAll" type="checkbox" /></th>
+          <th width="48">#</th>
+          <th class="nowrap">Booking ID</th>
+          <th>Name</th>
+          <th class="nowrap">Pickup (Local)</th>
+          <th class="nowrap">Pickup (UTC Z)</th>
+          <th>Origin</th>
+          <th>Destination</th>
+          <th>Status</th>
+          <th>Errors / Warnings / Instructions</th>
+          <th class="nowrap">Import Result</th>
+        </tr>
         </thead>
         <tbody id="tableBody"></tbody>
       </table>
     </div>
 
-    <div class="muted" style="margin-top:12px;">
-      Note: “Import” is still a simulation in this file — plug your real endpoint + Authorization header where marked.
+    <div class="muted" style="margin-top:10px;">
+      Real import uses your Proxy URL. If import fails with CORS/403/etc, the issue is usually in the proxy (or iCabbi rejecting payload).
     </div>
   </div>
 </div>
 
 <script>
+  // ---------- ELEMENTS ----------
   const els = {
+    // proxy
+    proxyUrl: document.getElementById('proxyUrl'),
+    btnSaveProxy: document.getElementById('btnSaveProxy'),
+    concurrency: document.getElementById('concurrency'),
+    delayMs: document.getElementById('delayMs'),
+    safetyMode: document.getElementById('safetyMode'),
+
+    // upload
     dropZone: document.getElementById('dropZone'),
     fileInput: document.getElementById('fileInput'),
     fileName: document.getElementById('fileName'),
-    btnParse: document.getElementById('btnParse'),
-    btnImport: document.getElementById('btnImport'),
-    btnExportJson: document.getElementById('btnExportJson'),
-    btnSelectValid: document.getElementById('btnSelectValid'),
-    btnClearSelect: document.getElementById('btnClearSelect'),
-    resultsArea: document.getElementById('resultsArea'),
-    tableBody: document.getElementById('tableBody'),
-    summaryText: document.getElementById('summaryText'),
     serviceDate: document.getElementById('serviceDate'),
     timeZone: document.getElementById('timeZone'),
     strictMode: document.getElementById('strictMode'),
+    btnParse: document.getElementById('btnParse'),
+
+    // results
+    resultsArea: document.getElementById('resultsArea'),
+    tableBody: document.getElementById('tableBody'),
+    summaryText: document.getElementById('summaryText'),
+    importStatus: document.getElementById('importStatus'),
+    progressBar: document.getElementById('progressBar'),
+
     searchBox: document.getElementById('searchBox'),
     filterMode: document.getElementById('filterMode'),
     checkAll: document.getElementById('checkAll'),
+
+    btnSelectValid: document.getElementById('btnSelectValid'),
+    btnClearSelect: document.getElementById('btnClearSelect'),
+    btnExportJson: document.getElementById('btnExportJson'),
+    btnImport: document.getElementById('btnImport'),
+
     tripCount: document.getElementById('tripCount'),
     validCount: document.getElementById('validCount'),
     warnCount: document.getElementById('warnCount'),
@@ -251,10 +390,28 @@
     selectedCount: document.getElementById('selectedCount')
   };
 
-  /** Parsed rows with meta */
-  let parsedBatch = []; // { idx, selected, status: 'valid'|'warn'|'error', messages:[], payload, localTimeStr, utcIso, isDuplicate }
+  // ---------- STATE ----------
+  // Each item: { idx, selected, status:'valid'|'warn'|'error', messages:[], payload, localTimeStr, utcIso, isDuplicate, import:{state, code, text} }
+  let parsedBatch = [];
+  let isImporting = false;
 
-  // FILE PICKER
+  // ---------- STORAGE ----------
+  const STORAGE_KEY = "icabbi_proxy_url_v1";
+  (function init() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) els.proxyUrl.value = saved;
+
+    if (!els.serviceDate.value) els.serviceDate.valueAsDate = new Date();
+  })();
+
+  els.btnSaveProxy.addEventListener('click', () => {
+    const v = (els.proxyUrl.value || '').trim();
+    if (!v) return alert("Enter your proxy URL first.");
+    localStorage.setItem(STORAGE_KEY, v);
+    alert("Saved proxy URL.");
+  });
+
+  // ---------- FILE PICKER ----------
   els.dropZone.addEventListener('click', () => els.fileInput.click());
   els.dropZone.addEventListener('dragover', (e) => { e.preventDefault(); els.dropZone.classList.add('active'); });
   els.dropZone.addEventListener('dragleave', () => els.dropZone.classList.remove('active'));
@@ -272,17 +429,14 @@
     els.fileInput.files = createFileList(file);
     if (!els.serviceDate.value) els.serviceDate.valueAsDate = new Date();
   }
-
   function createFileList(file) {
     const dt = new DataTransfer();
     dt.items.add(file);
     return dt.files;
   }
 
-  // --- SMART TIMEZONE HELPERS (DST-aware) ---
+  // ---------- TIMEZONE HELPERS (DST-aware) ----------
   function tzOffsetMinutes(timeZone, dateObj) {
-    // Uses Intl to compute offset of `timeZone` at `dateObj`
-    // Returns minutes to add to UTC to get zoned time (e.g. PST is -480).
     const dtf = new Intl.DateTimeFormat('en-US', {
       timeZone,
       year:'numeric', month:'2-digit', day:'2-digit',
@@ -292,7 +446,7 @@
     const parts = dtf.formatToParts(dateObj);
     const map = {};
     for (const p of parts) map[p.type] = p.value;
-    // Interpreting the zoned "clock" as if it were UTC gives a comparable timestamp.
+
     const asIfUtc = Date.UTC(
       Number(map.year),
       Number(map.month) - 1,
@@ -305,12 +459,9 @@
   }
 
   function zonedLocalToUtcIso(serviceDateYYYYMMDD, timeHHMM, timeZone) {
-    // serviceDateYYYYMMDD: "2025-12-16"
-    // timeHHMM: "13:45" (or "1:45 PM", "1345", Excel times etc handled elsewhere)
-    // Returns ISO string in UTC with Z + milliseconds.
     const [y, m, d] = serviceDateYYYYMMDD.split('-').map(Number);
     const [hh, mm] = timeHHMM.split(':').map(Number);
-    // Start with a UTC guess at the same clock time.
+
     const utcGuess = new Date(Date.UTC(y, m - 1, d, hh, mm, 0, 0));
     const offset = tzOffsetMinutes(timeZone, utcGuess);
     const utc = new Date(utcGuess.getTime() - offset * 60000);
@@ -322,7 +473,6 @@
   }
 
   function normalizeTime(raw) {
-    // Accept: "13:45", "1345", "1:45 PM", "1:45PM", Excel numeric time (0.573...) or Date
     if (raw === null || raw === undefined) return '';
     if (raw instanceof Date && !isNaN(raw)) {
       const hh = String(raw.getHours()).padStart(2,'0');
@@ -332,7 +482,7 @@
     const s = String(raw).trim();
     if (!s) return '';
 
-    // Excel fraction-of-day number
+    // Excel fraction-of-day
     if (/^\d+(\.\d+)?$/.test(s)) {
       const n = Number(s);
       if (!isNaN(n) && n >= 0 && n < 2) {
@@ -374,7 +524,6 @@
   function cleanPhone(p) {
     const s = (p || '').toString().trim();
     if (!s) return '';
-    // Keep leading + if present
     const plus = s.startsWith('+') ? '+' : '';
     const digits = s.replace(/[^\d]/g,'');
     return plus + digits;
@@ -389,7 +538,6 @@
   }
 
   function pick(row, candidates) {
-    // pick first existing header (case-insensitive / normalized)
     const keys = Object.keys(row || {});
     const map = new Map(keys.map(k => [normHeader(k), k]));
     for (const c of candidates) {
@@ -399,7 +547,7 @@
     return '';
   }
 
-  // PARSE
+  // ---------- PARSE ----------
   els.btnParse.addEventListener('click', async () => {
     const file = els.fileInput.files[0];
     const serviceDate = els.serviceDate.value;
@@ -417,17 +565,17 @@
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data, { type:'array' });
       const sheetName = workbook.SheetNames[0];
-
-      // Keep blanks so we can detect missing fields
       const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval:'' });
 
       parsedBatch = rows.map((row, i) => processRow(row, i, serviceDate, timeZone, strict));
       markDuplicates(parsedBatch);
 
-      // Default selection = valid rows
+      // Default selection: valid rows only
       parsedBatch.forEach(r => r.selected = (r.status === 'valid'));
-      renderAndUpdate();
+
       els.resultsArea.classList.remove('hidden');
+      renderAndUpdate();
+      resetProgress();
 
     } catch (err) {
       console.error(err);
@@ -437,6 +585,99 @@
       els.btnParse.disabled = false;
     }
   });
+
+  function processRow(row, index, serviceDate, timeZone, strict) {
+    const messages = [];
+    let status = 'valid';
+
+    const raw = {
+      id: pick(row, ['Booking Id','Booking ID','BookingId','Booking']),
+      name: pick(row, ['Client Name','Name','Passenger Name']),
+      time: pick(row, ['Schedule Time','Pickup Time','Time']),
+      phone: pick(row, ['Phone Pickup','Pickup Phone','Phone']),
+      orig: pick(row, ['Origin','Pickup','Pickup Address']),
+      dest: pick(row, ['Destination','Dropoff','Dropoff Address']),
+      cityOrig: pick(row, ['City (Orig)','City Orig','Origin City']),
+      cityDest: pick(row, ['City (Dest)','City Dest','Destination City']),
+      pax: pick(row, ['Passenger Types','Passenger Type']),
+      comments: pick(row, ['Comments','Comment','Notes']),
+      mobility: pick(row, ['Mobility Aids','Mobility']),
+      space: pick(row, ['Space Types','Space']),
+      late: pick(row, ['Requested Late Dropoff','Late Dropoff'])
+    };
+
+    const timeHHMM = normalizeTime(raw.time);
+
+    const instructions = [
+      raw.comments,
+      raw.late ? `Late Dropoff Requested: ${raw.late}` : '',
+      raw.mobility ? `Mobility: ${raw.mobility}` : '',
+      raw.space ? `Space: ${raw.space}` : ''
+    ].filter(Boolean).join(' | ');
+
+    const paxCount = raw.pax ? raw.pax.split(',').map(s => s.trim()).filter(Boolean).length : 1;
+
+    function pushErr(msg) {
+      if (strict) status = 'error';
+      else if (status === 'valid') status = 'warn';
+      messages.push(msg);
+    }
+
+    if (!raw.name) pushErr("Missing Client Name");
+    if (!raw.orig) pushErr("Missing Origin");
+    if (!raw.dest) pushErr("Missing Destination");
+    if (!timeHHMM) pushErr(`Missing/Invalid Schedule Time: "${raw.time}"`);
+
+    const phoneClean = cleanPhone(raw.phone);
+    if (raw.phone && phoneClean.replace('+','').length < 10) {
+      messages.push(`Phone looks short: "${raw.phone}"`);
+      if (status === 'valid') status = 'warn';
+    }
+
+    let utcIso = '';
+    try {
+      if (timeZone === 'UTC') {
+        const combined = new Date(`${serviceDate}T${timeHHMM}:00.000Z`);
+        if (isNaN(combined)) throw new Error("Invalid UTC date/time");
+        utcIso = combined.toISOString();
+      } else {
+        utcIso = zonedLocalToUtcIso(serviceDate, timeHHMM, timeZone);
+      }
+    } catch (e) {
+      pushErr(e.message);
+    }
+
+    const addressFormatted = raw.cityOrig ? `${raw.orig}, ${raw.cityOrig}` : raw.orig;
+    const destFormatted = raw.cityDest ? `${raw.dest}, ${raw.cityDest}` : raw.dest;
+
+    const payload = {
+      external_booking_id: raw.id || '',
+      name: raw.name || 'Unknown',
+      phone: phoneClean,
+      date: utcIso,
+      address: { formatted: addressFormatted || '' },
+      destination: { formatted: destFormatted || '' },
+      passengers: paxCount,
+      instructions
+    };
+
+    if (strict && (!payload.address.formatted || !payload.destination.formatted || !payload.date)) {
+      status = 'error';
+      if (!messages.length) messages.push("Row failed strict validation");
+    }
+
+    return {
+      idx: index,
+      selected: false,
+      status,
+      messages,
+      payload,
+      localTimeStr: timeHHMM ? toLocalDisplay(serviceDate, timeHHMM) : '',
+      utcIso: utcIso || '',
+      isDuplicate: false,
+      import: { state: 'idle', code: null, text: '' } // idle|imported|failed|skipped
+    };
+  }
 
   function markDuplicates(items) {
     const seen = new Map();
@@ -457,111 +698,7 @@
     }
   }
 
-  function processRow(row, index, serviceDate, timeZone, strict) {
-    const messages = [];
-    let status = 'valid';
-
-    // Flexible header lookup (works if export changes column capitalization slightly)
-    const raw = {
-      id: pick(row, ['Booking Id','Booking ID','BookingId','Booking']),
-      name: pick(row, ['Client Name','Name','Passenger Name']),
-      time: pick(row, ['Schedule Time','Pickup Time','Time']),
-      phone: pick(row, ['Phone Pickup','Pickup Phone','Phone']),
-      orig: pick(row, ['Origin','Pickup','Pickup Address']),
-      dest: pick(row, ['Destination','Dropoff','Dropoff Address']),
-      cityOrig: pick(row, ['City (Orig)','City Orig','Origin City']),
-      cityDest: pick(row, ['City (Dest)','City Dest','Destination City']),
-      pax: pick(row, ['Passenger Types','Passenger Type']),
-      comments: pick(row, ['Comments','Comment','Notes']),
-      mobility: pick(row, ['Mobility Aids','Mobility']),
-      space: pick(row, ['Space Types','Space']),
-      late: pick(row, ['Requested Late Dropoff','Late Dropoff'])
-    };
-
-    // Normalize time
-    const timeHHMM = normalizeTime(raw.time);
-
-    // Build instructions
-    const instructions = [
-      raw.comments,
-      raw.late ? `Late Dropoff Requested: ${raw.late}` : '',
-      raw.mobility ? `Mobility: ${raw.mobility}` : '',
-      raw.space ? `Space: ${raw.space}` : ''
-    ].filter(Boolean).join(' | ');
-
-    // Passengers count (CLIENT1,PARENT1 etc)
-    const paxCount = raw.pax ? raw.pax.split(',').map(s => s.trim()).filter(Boolean).length : 1;
-
-    // Validation
-    function pushErr(msg) {
-      if (strict) {
-        status = 'error';
-      } else if (status === 'valid') {
-        status = 'warn';
-      }
-      messages.push(msg);
-    }
-
-    if (!raw.name) pushErr("Missing Client Name");
-    if (!raw.orig) pushErr("Missing Origin");
-    if (!raw.dest) pushErr("Missing Destination");
-    if (!timeHHMM) pushErr(`Missing/Invalid Schedule Time: "${raw.time}"`);
-
-    // Phone: optional, but if present, must look sane
-    const phoneClean = cleanPhone(raw.phone);
-    if (raw.phone && phoneClean.replace('+','').length < 10) {
-      messages.push(`Phone looks short: "${raw.phone}"`);
-      if (status === 'valid') status = 'warn';
-    }
-
-    // Dates
-    let utcIso = '';
-    try {
-      if (timeZone === 'UTC') {
-        // if user says UTC, just treat the serviceDate/time as UTC
-        const combined = new Date(`${serviceDate}T${timeHHMM}:00.000Z`);
-        if (isNaN(combined)) throw new Error("Invalid UTC date/time");
-        utcIso = combined.toISOString();
-      } else {
-        utcIso = zonedLocalToUtcIso(serviceDate, timeHHMM, timeZone);
-      }
-    } catch (e) {
-      pushErr(e.message);
-    }
-
-    const addressFormatted = raw.cityOrig ? `${raw.orig}, ${raw.cityOrig}` : raw.orig;
-    const destFormatted = raw.cityDest ? `${raw.dest}, ${raw.cityDest}` : raw.dest;
-
-    const payload = {
-      external_booking_id: raw.id || '',
-      name: raw.name || 'Unknown',
-      phone: phoneClean, // keep empty if missing
-      date: utcIso,      // ISO8601 with ms + Z
-      address: { formatted: addressFormatted || '' },
-      destination: { formatted: destFormatted || '' },
-      passengers: paxCount,
-      instructions
-    };
-
-    // If we’re strict and missing critical fields, mark as error
-    if (strict && (payload.address.formatted === '' || payload.destination.formatted === '' || !payload.date)) {
-      status = 'error';
-      if (!messages.length) messages.push("Row failed strict validation");
-    }
-
-    return {
-      idx: index,
-      selected: false,
-      status,
-      messages,
-      payload,
-      localTimeStr: timeHHMM ? toLocalDisplay(serviceDate, timeHHMM) : '',
-      utcIso: utcIso || '',
-      isDuplicate: false
-    };
-  }
-
-  // UI: filtering, search, selection
+  // ---------- UI FILTERS ----------
   els.searchBox.addEventListener('input', () => renderAndUpdate());
   els.filterMode.addEventListener('change', () => renderAndUpdate());
 
@@ -588,24 +725,25 @@
     const mode = els.filterMode.value;
 
     return parsedBatch.filter(r => {
-      // search
       if (q) {
         const hay = [
           r.payload.external_booking_id,
           r.payload.name,
           r.payload.address?.formatted,
-          r.payload.destination?.formatted
+          r.payload.destination?.formatted,
+          r.import?.text
         ].join(' ').toLowerCase();
         if (!hay.includes(q)) return false;
       }
 
-      // filter
       if (mode === 'all') return true;
       if (mode === 'selected') return r.selected;
       if (mode === 'valid') return r.status === 'valid';
       if (mode === 'warn') return r.status === 'warn';
       if (mode === 'error') return r.status === 'error';
       if (mode === 'dupes') return r.isDuplicate;
+      if (mode === 'imported') return r.import?.state === 'imported';
+      if (mode === 'failed') return r.import?.state === 'failed';
       return true;
     });
   }
@@ -613,9 +751,9 @@
   function renderAndUpdate() {
     renderTable(getVisibleItems());
     updateCounts();
-    // enable import if any selected that are not errors
+
     const importable = parsedBatch.filter(r => r.selected && r.status !== 'error');
-    els.btnImport.disabled = importable.length === 0;
+    els.btnImport.disabled = importable.length === 0 || isImporting;
   }
 
   function updateCounts() {
@@ -634,11 +772,12 @@
 
     const tzLabel = els.timeZone.value;
     els.summaryText.innerHTML =
-      `Found <b>${total}</b> trips — <span class="badge badge-ok">Valid ${valid}</span> ` +
-      `<span class="badge badge-warn">Warn ${warn}</span> ` +
-      `<span class="badge badge-err">Error ${err}</span>` +
-      (dup ? ` &nbsp; <span class="badge badge-warn">Duplicates ${dup}</span>` : '') +
-      `<div class="muted" style="margin-top:6px;">Pickup times are interpreted in <b>${tzLabel}</b> and converted to UTC ISO Z (with milliseconds).</div>`;
+      `Found <b>${total}</b> trips — ` +
+      `<span class="badge ok">Valid ${valid}</span> ` +
+      `<span class="badge warn">Warn ${warn}</span> ` +
+      `<span class="badge err">Error ${err}</span>` +
+      (dup ? ` &nbsp; <span class="badge warn">Duplicates ${dup}</span>` : '') +
+      `<div class="muted" style="margin-top:6px;">Pickup times are interpreted in <b>${escapeHtml(tzLabel)}</b> and converted to UTC ISO Z (with milliseconds).</div>`;
   }
 
   function renderTable(items) {
@@ -647,17 +786,27 @@
     items.forEach((item, displayIdx) => {
       const p = item.payload;
 
-      const badge =
-        item.status === 'valid' ? `<span class="badge badge-ok">Valid</span>` :
-        item.status === 'warn'  ? `<span class="badge badge-warn">Warn</span>` :
-                                  `<span class="badge badge-err">Error</span>`;
+      const validationBadge =
+        item.status === 'valid' ? `<span class="badge ok">Valid</span>` :
+        item.status === 'warn'  ? `<span class="badge warn">Warn</span>` :
+                                  `<span class="badge err">Error</span>`;
 
       const msgText = item.status === 'valid'
         ? (p.instructions || '—')
         : item.messages.join(' • ');
 
-      const tr = document.createElement('tr');
+      const importBadge = (() => {
+        const st = item.import?.state || 'idle';
+        if (st === 'imported') return `<span class="badge ok">Imported</span>`;
+        if (st === 'failed') return `<span class="badge err">Failed</span>`;
+        if (st === 'skipped') return `<span class="badge warn">Skipped</span>`;
+        if (st === 'sending') return `<span class="badge info">Sending</span>`;
+        return `<span class="badge info">Idle</span>`;
+      })();
 
+      const importText = item.import?.text ? item.import.text : '—';
+
+      const tr = document.createElement('tr');
       tr.innerHTML = `
         <td class="nowrap">
           <input type="checkbox" ${item.selected ? 'checked' : ''} data-idx="${item.idx}" />
@@ -669,13 +818,17 @@
         <td class="mono nowrap">${escapeHtml(item.utcIso || '—')}</td>
         <td>${escapeHtml(p.address?.formatted || '—')}</td>
         <td>${escapeHtml(p.destination?.formatted || '—')}</td>
-        <td>${badge}${item.isDuplicate ? ` <span class="badge badge-warn" title="Duplicate ID">Dupe</span>` : ''}</td>
-        <td class="${item.status === 'error' ? 'text-red' : ''}">
-          ${escapeHtml(msgText)}
+        <td>
+          ${validationBadge}
+          ${item.isDuplicate ? ` <span class="badge warn" title="Duplicate ID">Dupe</span>` : ''}
+        </td>
+        <td class="${item.status === 'error' ? 'text-red' : ''}">${escapeHtml(msgText)}</td>
+        <td>
+          ${importBadge}
+          <div class="muted mono" style="margin-top:6px;max-width:360px;word-break:break-word;">${escapeHtml(importText)}</div>
         </td>
       `;
 
-      // checkbox handler
       tr.querySelector('input[type="checkbox"]').addEventListener('change', (e) => {
         const idx = Number(e.target.getAttribute('data-idx'));
         const found = parsedBatch.find(r => r.idx === idx);
@@ -689,14 +842,14 @@
 
   function escapeHtml(s) {
     return String(s ?? '')
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#039;');
+      .replaceAll('&','&amp;')
+      .replaceAll('<','&lt;')
+      .replaceAll('>','&gt;')
+      .replaceAll('"','&quot;')
+      .replaceAll("'","&#039;");
   }
 
-  // EXPORT SELECTED JSON
+  // ---------- EXPORT JSON ----------
   els.btnExportJson.addEventListener('click', () => {
     const selected = parsedBatch.filter(r => r.selected);
     if (!selected.length) return alert("No rows selected.");
@@ -713,20 +866,149 @@
     URL.revokeObjectURL(url);
   });
 
-  // IMPORT (SIMULATION / PLUG REAL ENDPOINT HERE)
-  const WORKER_URL = "https://5be0fc4c.importtool.pages.dev/api/bookings/add";
+  // ---------- REAL IMPORT (via Proxy URL) ----------
+  els.btnImport.addEventListener('click', async () => {
+    if (isImporting) return;
 
-const resp = await fetch(WORKER_URL, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify(trip.payload)
-});
+    const proxy = (els.proxyUrl.value || '').trim();
+    if (!proxy) {
+      alert("Enter your Proxy Endpoint URL first (top of page).");
+      return;
+    }
+    if (!/^https?:\/\//i.test(proxy)) {
+      alert("Proxy URL must start with https:// (or http:// for local testing).");
+      return;
+    }
 
-const txt = await resp.text();
-if (!resp.ok) throw new Error(`Trip ${i+1} failed: ${resp.status} ${txt}`);
+    const selectedAll = parsedBatch.filter(r => r.selected);
+    if (!selectedAll.length) return alert("No rows selected.");
 
+    // Block errors always
+    const selected = parsedBatch.filter(r => r.selected && r.status !== 'error');
+    const blocked = selectedAll.length - selected.length;
+    if (!selected.length) return alert("No importable rows selected (errors are blocked).");
+
+    // Safety mode: only 1 trip first
+    let toSend = selected;
+    const safety = els.safetyMode.value;
+    if (safety === 'one') {
+      toSend = selected.slice(0, 1);
+      const msg =
+        `SAFETY MODE: This will import ONLY 1 trip (the first selected importable row).\n\n` +
+        `Selected: ${selectedAll.length}\nImportable: ${selected.length}\nBlocked(errors): ${blocked}\n\nProceed?`;
+      if (!confirm(msg)) return;
+    } else {
+      const msg =
+        `This will import ${selected.length} trip(s) via your Proxy.\n\n` +
+        `Selected: ${selectedAll.length}\nBlocked(errors): ${blocked}\n\nProceed?`;
+      if (!confirm(msg)) return;
+    }
+
+    // Reset per-row import state for rows we’re sending
+    for (const r of toSend) {
+      r.import = { state:'idle', code:null, text:'' };
+    }
+
+    isImporting = true;
+    els.btnImport.disabled = true;
+    els.btnImport.innerText = "Importing…";
+    els.importStatus.textContent = "Starting…";
+    setProgress(0);
+
+    // Concurrency + delay
+    const concurrency = Math.max(1, Math.min(3, Number(els.concurrency.value || 1)));
+    const delay = Math.max(0, Number(els.delayMs.value || 0));
+
+    // Create a simple worker pool
+    let completed = 0;
+    let failed = 0;
+
+    const queue = [...toSend];
+    const total = queue.length;
+
+    // mark others (selected but blocked) as skipped
+    for (const r of parsedBatch) {
+      if (r.selected && r.status === 'error') {
+        r.import = { state:'skipped', code:null, text:'Blocked by validation (error row).' };
+      }
+    }
+
+    renderAndUpdate();
+
+    const workers = Array.from({ length: concurrency }, () => runWorker());
+
+    await Promise.all(workers);
+
+    // Done
+    isImporting = false;
+    els.btnImport.innerText = "Import Selected";
+    els.importStatus.textContent = `Done. Imported: ${completed - failed}/${completed}, Failed: ${failed}`;
+    els.btnImport.disabled = parsedBatch.filter(r => r.selected && r.status !== 'error').length === 0;
+    renderAndUpdate();
+
+    async function runWorker() {
+      while (queue.length) {
+        const row = queue.shift();
+        if (!row) break;
+
+        row.import = { state:'sending', code:null, text:'' };
+        renderAndUpdate();
+
+        try {
+          const resp = await fetch(proxy, {
+            method: "POST",
+            headers: { "Content-Type":"application/json" },
+            body: JSON.stringify(row.payload)
+          });
+
+          const text = await resp.text();
+          row.import.code = resp.status;
+          row.import.text = text || '';
+
+          if (!resp.ok) {
+            row.import.state = 'failed';
+            failed += 1;
+          } else {
+            row.import.state = 'imported';
+          }
+        } catch (e) {
+          row.import.state = 'failed';
+          row.import.code = 0;
+          row.import.text = String(e?.message || e);
+          failed += 1;
+        } finally {
+          completed += 1;
+          const pct = total ? Math.round((completed / total) * 100) : 100;
+          els.importStatus.textContent = `Importing… ${completed}/${total} (Failed: ${failed})`;
+          setProgress(pct);
+          renderAndUpdate();
+          if (delay) await sleep(delay);
+        }
+      }
+    }
+  });
+
+  function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+  function setProgress(pct){
+    els.progressBar.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+  }
+  function resetProgress(){
+    els.importStatus.textContent = "Idle";
+    setProgress(0);
+  }
+
+  // ---------- HELPERS ----------
+  function resetAllImportStates() {
+    for (const r of parsedBatch) r.import = { state:'idle', code:null, text:'' };
+  }
+
+  // ---------- INITIAL UI ----------
+  function boot() {
+    els.checkAll.checked = false;
+    els.resultsArea.classList.add('hidden');
+    resetProgress();
+  }
+  boot();
 </script>
-
 </body>
 </html>
-
