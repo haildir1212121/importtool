@@ -1,0 +1,763 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>iCabbi Trip Import (Smart)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root {
+      --primary:#4f46e5;
+      --bg:#f3f4f6;
+      --card-bg:#ffffff;
+      --text-main:#1f2937;
+      --border:#e5e7eb;
+      --success-bg:#d1fae5; --success-text:#065f46;
+      --error-bg:#fee2e2; --error-text:#991b1b;
+      --warn-bg:#ffedd5; --warn-text:#9a3412;
+    }
+    *{box-sizing:border-box;}
+    body{
+      font-family:'Inter',sans-serif;
+      background:var(--bg);
+      padding:40px 20px;
+      color:var(--text-main);
+      margin:0;
+    }
+    .container{max-width:1280px;margin:0 auto;}
+    h1{margin:0 0 8px;font-size:24px;color:#111;}
+    p{color:#666;margin:0 0 24px;}
+
+    .card{
+      background:var(--card-bg);
+      border-radius:12px;
+      padding:24px;
+      box-shadow:0 4px 6px -1px rgba(0,0,0,.1);
+      margin-bottom:24px;
+      border:1px solid var(--border);
+    }
+    .grid-form{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+      gap:16px 20px;
+      align-items:end;
+    }
+    label{display:block;font-size:13px;font-weight:600;margin-bottom:8px;}
+    input, select{
+      width:100%;
+      padding:10px;
+      border:1px solid var(--border);
+      border-radius:6px;
+      font-size:14px;
+      background:#fff;
+    }
+
+    .file-drop{
+      border:2px dashed #cbd5e1;
+      padding:24px;
+      text-align:center;
+      border-radius:8px;
+      cursor:pointer;
+      background:#f8fafc;
+      transition:.2s;
+    }
+    .file-drop:hover{border-color:var(--primary);background:#eef2ff;}
+    .file-drop.active{border-color:var(--primary);background:#e0e7ff;}
+
+    .btn{
+      padding:12px 16px;
+      border-radius:6px;
+      font-weight:700;
+      border:none;
+      cursor:pointer;
+      font-size:14px;
+      transition:.2s;
+      white-space:nowrap;
+    }
+    .btn-primary{background:var(--primary);color:#fff;}
+    .btn-primary:hover{background:#4338ca;}
+    .btn-ghost{background:#fff;border:1px solid var(--border);color:#111;}
+    .btn-ghost:hover{background:#f9fafb;}
+    .btn:disabled{background:#9ca3af;cursor:not-allowed;border-color:#9ca3af;color:#fff;}
+
+    .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+    .grow{flex:1;}
+    .hidden{display:none;}
+    .muted{color:#6b7280;font-size:12px;}
+
+    .badge{
+      padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;
+      text-transform:uppercase;letter-spacing:.5px;display:inline-block;
+    }
+    .badge-ok{background:var(--success-bg);color:var(--success-text);}
+    .badge-err{background:var(--error-bg);color:var(--error-text);}
+    .badge-warn{background:var(--warn-bg);color:var(--warn-text);}
+
+    .table-header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;}
+    .table-wrap{overflow:auto;max-height:560px;border:1px solid var(--border);border-radius:8px;background:#fff;}
+    table{width:100%;border-collapse:collapse;font-size:13px;min-width:1100px;}
+    th{
+      position:sticky;top:0;background:#f9fafb;padding:12px 12px;text-align:left;
+      border-bottom:2px solid var(--border);font-weight:800;color:#6b7280;z-index:10;
+    }
+    td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top;}
+    tr:hover td{background:#f9fafb;}
+    .text-red{color:#dc2626;font-weight:700;}
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);
+      border-radius:999px;background:#fff;font-size:13px;
+    }
+    .k{
+      font-weight:800;color:#111;
+    }
+    .small-input{padding:8px 10px;font-size:13px;}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+    .nowrap{white-space:nowrap;}
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>iCabbi Trip Import (Smart)</h1>
+  <p>Upload your <b>Export.csv</b> or Excel file to preview, validate, and format trips for dispatch — with Pacific→UTC “Z” conversion, duplicate detection, filtering, selection, and JSON export.</p>
+
+  <div class="card">
+    <div class="grid-form">
+
+      <div style="grid-column: span 1 / -1;">
+        <label>Spreadsheet File</label>
+        <div class="file-drop" id="dropZone">
+          <span id="fileName">Click to select file or Drag & Drop here</span>
+          <input id="fileInput" type="file" accept=".csv, .xls, .xlsx" style="display:none;" />
+        </div>
+        <div class="muted" style="margin-top:8px;">
+          Tip: your sample Export has headers like <span class="mono">Booking Id</span>, <span class="mono">Client Name</span>, <span class="mono">Schedule Time</span>, <span class="mono">Origin</span>, <span class="mono">Destination</span>, etc.
+        </div>
+      </div>
+
+      <div>
+        <label>Service Date (local)</label>
+        <input id="serviceDate" type="date" />
+      </div>
+
+      <div>
+        <label>Time Zone</label>
+        <select id="timeZone">
+          <option value="America/Los_Angeles" selected>America/Los_Angeles (Pacific)</option>
+          <option value="UTC">UTC</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Strict validation</label>
+        <select id="strictMode">
+          <option value="on" selected>On (block bad rows)</option>
+          <option value="off">Off (warn, still allow)</option>
+        </select>
+      </div>
+
+      <div>
+        <button id="btnParse" class="btn btn-primary" style="width:100%">Preview Trips</button>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="resultsArea" class="card hidden">
+    <div class="table-header">
+      <div class="row">
+        <span class="pill"><span class="k">Trips</span> <span id="tripCount">0</span></span>
+        <span class="pill"><span class="k">Valid</span> <span id="validCount">0</span></span>
+        <span class="pill"><span class="k">Warnings</span> <span id="warnCount">0</span></span>
+        <span class="pill"><span class="k">Errors</span> <span id="errCount">0</span></span>
+        <span class="pill"><span class="k">Selected</span> <span id="selectedCount">0</span></span>
+      </div>
+
+      <div class="row">
+        <input id="searchBox" class="small-input" placeholder="Search name / origin / destination / booking id..." style="min-width:320px;" />
+        <select id="filterMode" class="small-input" style="min-width:190px;">
+          <option value="all" selected>Show: All</option>
+          <option value="selected">Show: Selected</option>
+          <option value="valid">Show: Valid only</option>
+          <option value="warn">Show: Warnings only</option>
+          <option value="error">Show: Errors only</option>
+          <option value="dupes">Show: Duplicates only</option>
+        </select>
+
+        <button id="btnSelectValid" class="btn btn-ghost">Select all valid</button>
+        <button id="btnClearSelect" class="btn btn-ghost">Clear selection</button>
+        <button id="btnExportJson" class="btn btn-ghost">Export selected JSON</button>
+
+        <button id="btnImport" class="btn btn-primary" disabled>Import Selected to iCabbi</button>
+      </div>
+    </div>
+
+    <div class="muted" id="summaryText" style="margin-bottom:12px;">Processing…</div>
+
+    <div class="table-wrap">
+      <table id="dataTable">
+        <thead>
+          <tr>
+            <th width="42" class="nowrap"><input id="checkAll" type="checkbox" /></th>
+            <th width="48">#</th>
+            <th class="nowrap">Booking ID</th>
+            <th>Name</th>
+            <th class="nowrap">Pickup (Local)</th>
+            <th class="nowrap">Pickup (UTC Z)</th>
+            <th>Origin</th>
+            <th>Destination</th>
+            <th>Status</th>
+            <th>Errors / Warnings / Instructions</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="muted" style="margin-top:12px;">
+      Note: “Import” is still a simulation in this file — plug your real endpoint + Authorization header where marked.
+    </div>
+  </div>
+</div>
+
+<script>
+  const els = {
+    dropZone: document.getElementById('dropZone'),
+    fileInput: document.getElementById('fileInput'),
+    fileName: document.getElementById('fileName'),
+    btnParse: document.getElementById('btnParse'),
+    btnImport: document.getElementById('btnImport'),
+    btnExportJson: document.getElementById('btnExportJson'),
+    btnSelectValid: document.getElementById('btnSelectValid'),
+    btnClearSelect: document.getElementById('btnClearSelect'),
+    resultsArea: document.getElementById('resultsArea'),
+    tableBody: document.getElementById('tableBody'),
+    summaryText: document.getElementById('summaryText'),
+    serviceDate: document.getElementById('serviceDate'),
+    timeZone: document.getElementById('timeZone'),
+    strictMode: document.getElementById('strictMode'),
+    searchBox: document.getElementById('searchBox'),
+    filterMode: document.getElementById('filterMode'),
+    checkAll: document.getElementById('checkAll'),
+    tripCount: document.getElementById('tripCount'),
+    validCount: document.getElementById('validCount'),
+    warnCount: document.getElementById('warnCount'),
+    errCount: document.getElementById('errCount'),
+    selectedCount: document.getElementById('selectedCount')
+  };
+
+  /** Parsed rows with meta */
+  let parsedBatch = []; // { idx, selected, status: 'valid'|'warn'|'error', messages:[], payload, localTimeStr, utcIso, isDuplicate }
+
+  // FILE PICKER
+  els.dropZone.addEventListener('click', () => els.fileInput.click());
+  els.dropZone.addEventListener('dragover', (e) => { e.preventDefault(); els.dropZone.classList.add('active'); });
+  els.dropZone.addEventListener('dragleave', () => els.dropZone.classList.remove('active'));
+  els.dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    els.dropZone.classList.remove('active');
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+  els.fileInput.addEventListener('change', (e) => {
+    if (e.target.files[0]) handleFile(e.target.files[0]);
+  });
+
+  function handleFile(file) {
+    els.fileName.innerText = "Selected: " + file.name;
+    els.fileInput.files = createFileList(file);
+    if (!els.serviceDate.value) els.serviceDate.valueAsDate = new Date();
+  }
+
+  function createFileList(file) {
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    return dt.files;
+  }
+
+  // --- SMART TIMEZONE HELPERS (DST-aware) ---
+  function tzOffsetMinutes(timeZone, dateObj) {
+    // Uses Intl to compute offset of `timeZone` at `dateObj`
+    // Returns minutes to add to UTC to get zoned time (e.g. PST is -480).
+    const dtf = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      year:'numeric', month:'2-digit', day:'2-digit',
+      hour:'2-digit', minute:'2-digit', second:'2-digit',
+      hour12:false
+    });
+    const parts = dtf.formatToParts(dateObj);
+    const map = {};
+    for (const p of parts) map[p.type] = p.value;
+    // Interpreting the zoned "clock" as if it were UTC gives a comparable timestamp.
+    const asIfUtc = Date.UTC(
+      Number(map.year),
+      Number(map.month) - 1,
+      Number(map.day),
+      Number(map.hour),
+      Number(map.minute),
+      Number(map.second)
+    );
+    return (asIfUtc - dateObj.getTime()) / 60000;
+  }
+
+  function zonedLocalToUtcIso(serviceDateYYYYMMDD, timeHHMM, timeZone) {
+    // serviceDateYYYYMMDD: "2025-12-16"
+    // timeHHMM: "13:45" (or "1:45 PM", "1345", Excel times etc handled elsewhere)
+    // Returns ISO string in UTC with Z + milliseconds.
+    const [y, m, d] = serviceDateYYYYMMDD.split('-').map(Number);
+    const [hh, mm] = timeHHMM.split(':').map(Number);
+    // Start with a UTC guess at the same clock time.
+    const utcGuess = new Date(Date.UTC(y, m - 1, d, hh, mm, 0, 0));
+    const offset = tzOffsetMinutes(timeZone, utcGuess);
+    const utc = new Date(utcGuess.getTime() - offset * 60000);
+    return utc.toISOString(); // includes milliseconds + Z
+  }
+
+  function toLocalDisplay(serviceDateYYYYMMDD, timeHHMM) {
+    return `${serviceDateYYYYMMDD} ${timeHHMM}`;
+  }
+
+  function normalizeTime(raw) {
+    // Accept: "13:45", "1345", "1:45 PM", "1:45PM", Excel numeric time (0.573...) or Date
+    if (raw === null || raw === undefined) return '';
+    if (raw instanceof Date && !isNaN(raw)) {
+      const hh = String(raw.getHours()).padStart(2,'0');
+      const mm = String(raw.getMinutes()).padStart(2,'0');
+      return `${hh}:${mm}`;
+    }
+    const s = String(raw).trim();
+    if (!s) return '';
+
+    // Excel fraction-of-day number
+    if (/^\d+(\.\d+)?$/.test(s)) {
+      const n = Number(s);
+      if (!isNaN(n) && n >= 0 && n < 2) {
+        const totalMinutes = Math.round(n * 24 * 60);
+        const hh = String(Math.floor(totalMinutes / 60) % 24).padStart(2,'0');
+        const mm = String(totalMinutes % 60).padStart(2,'0');
+        return `${hh}:${mm}`;
+      }
+    }
+
+    // 1345 -> 13:45
+    if (/^\d{3,4}$/.test(s)) {
+      const padded = s.padStart(4,'0');
+      return `${padded.slice(0,2)}:${padded.slice(2,4)}`;
+    }
+
+    // 1:45 PM / 1:45PM
+    const ampm = s.match(/^(\d{1,2})(?::(\d{2}))?\s*([AP]M)$/i);
+    if (ampm) {
+      let hh = Number(ampm[1]);
+      let mm = Number(ampm[2] || '00');
+      const mer = ampm[3].toUpperCase();
+      if (mer === 'PM' && hh !== 12) hh += 12;
+      if (mer === 'AM' && hh === 12) hh = 0;
+      return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+    }
+
+    // already HH:MM
+    const hhmm = s.match(/^(\d{1,2}):(\d{2})$/);
+    if (hhmm) {
+      const hh = String(Number(hhmm[1])).padStart(2,'0');
+      const mm = String(Number(hhmm[2])).padStart(2,'0');
+      return `${hh}:${mm}`;
+    }
+
+    return '';
+  }
+
+  function cleanPhone(p) {
+    const s = (p || '').toString().trim();
+    if (!s) return '';
+    // Keep leading + if present
+    const plus = s.startsWith('+') ? '+' : '';
+    const digits = s.replace(/[^\d]/g,'');
+    return plus + digits;
+  }
+
+  function normHeader(h) {
+    return String(h || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .replace(/[()]/g, '');
+  }
+
+  function pick(row, candidates) {
+    // pick first existing header (case-insensitive / normalized)
+    const keys = Object.keys(row || {});
+    const map = new Map(keys.map(k => [normHeader(k), k]));
+    for (const c of candidates) {
+      const real = map.get(normHeader(c));
+      if (real !== undefined) return (row[real] ?? '').toString().trim();
+    }
+    return '';
+  }
+
+  // PARSE
+  els.btnParse.addEventListener('click', async () => {
+    const file = els.fileInput.files[0];
+    const serviceDate = els.serviceDate.value;
+    const timeZone = els.timeZone.value;
+    const strict = els.strictMode.value === 'on';
+
+    if (!file) return alert("Please select a file.");
+    if (!serviceDate) return alert("Please set a Service Date.");
+    if (typeof XLSX === 'undefined') return alert("Error: SheetJS failed to load.");
+
+    els.btnParse.innerText = "Processing…";
+    els.btnParse.disabled = true;
+
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type:'array' });
+      const sheetName = workbook.SheetNames[0];
+
+      // Keep blanks so we can detect missing fields
+      const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval:'' });
+
+      parsedBatch = rows.map((row, i) => processRow(row, i, serviceDate, timeZone, strict));
+      markDuplicates(parsedBatch);
+
+      // Default selection = valid rows
+      parsedBatch.forEach(r => r.selected = (r.status === 'valid'));
+      renderAndUpdate();
+      els.resultsArea.classList.remove('hidden');
+
+    } catch (err) {
+      console.error(err);
+      alert("Error parsing file: " + err.message);
+    } finally {
+      els.btnParse.innerText = "Preview Trips";
+      els.btnParse.disabled = false;
+    }
+  });
+
+  function markDuplicates(items) {
+    const seen = new Map();
+    for (const it of items) {
+      const id = (it.payload.external_booking_id || '').trim();
+      if (!id) continue;
+      if (!seen.has(id)) seen.set(id, []);
+      seen.get(id).push(it);
+    }
+    for (const [id, arr] of seen.entries()) {
+      if (arr.length > 1) {
+        for (const it of arr) {
+          it.isDuplicate = true;
+          it.messages.push(`Duplicate Booking Id in file: ${id}`);
+          if (it.status === 'valid') it.status = 'warn';
+        }
+      }
+    }
+  }
+
+  function processRow(row, index, serviceDate, timeZone, strict) {
+    const messages = [];
+    let status = 'valid';
+
+    // Flexible header lookup (works if export changes column capitalization slightly)
+    const raw = {
+      id: pick(row, ['Booking Id','Booking ID','BookingId','Booking']),
+      name: pick(row, ['Client Name','Name','Passenger Name']),
+      time: pick(row, ['Schedule Time','Pickup Time','Time']),
+      phone: pick(row, ['Phone Pickup','Pickup Phone','Phone']),
+      orig: pick(row, ['Origin','Pickup','Pickup Address']),
+      dest: pick(row, ['Destination','Dropoff','Dropoff Address']),
+      cityOrig: pick(row, ['City (Orig)','City Orig','Origin City']),
+      cityDest: pick(row, ['City (Dest)','City Dest','Destination City']),
+      pax: pick(row, ['Passenger Types','Passenger Type']),
+      comments: pick(row, ['Comments','Comment','Notes']),
+      mobility: pick(row, ['Mobility Aids','Mobility']),
+      space: pick(row, ['Space Types','Space']),
+      late: pick(row, ['Requested Late Dropoff','Late Dropoff'])
+    };
+
+    // Normalize time
+    const timeHHMM = normalizeTime(raw.time);
+
+    // Build instructions
+    const instructions = [
+      raw.comments,
+      raw.late ? `Late Dropoff Requested: ${raw.late}` : '',
+      raw.mobility ? `Mobility: ${raw.mobility}` : '',
+      raw.space ? `Space: ${raw.space}` : ''
+    ].filter(Boolean).join(' | ');
+
+    // Passengers count (CLIENT1,PARENT1 etc)
+    const paxCount = raw.pax ? raw.pax.split(',').map(s => s.trim()).filter(Boolean).length : 1;
+
+    // Validation
+    function pushErr(msg) {
+      if (strict) {
+        status = 'error';
+      } else if (status === 'valid') {
+        status = 'warn';
+      }
+      messages.push(msg);
+    }
+
+    if (!raw.name) pushErr("Missing Client Name");
+    if (!raw.orig) pushErr("Missing Origin");
+    if (!raw.dest) pushErr("Missing Destination");
+    if (!timeHHMM) pushErr(`Missing/Invalid Schedule Time: "${raw.time}"`);
+
+    // Phone: optional, but if present, must look sane
+    const phoneClean = cleanPhone(raw.phone);
+    if (raw.phone && phoneClean.replace('+','').length < 10) {
+      messages.push(`Phone looks short: "${raw.phone}"`);
+      if (status === 'valid') status = 'warn';
+    }
+
+    // Dates
+    let utcIso = '';
+    try {
+      if (timeZone === 'UTC') {
+        // if user says UTC, just treat the serviceDate/time as UTC
+        const combined = new Date(`${serviceDate}T${timeHHMM}:00.000Z`);
+        if (isNaN(combined)) throw new Error("Invalid UTC date/time");
+        utcIso = combined.toISOString();
+      } else {
+        utcIso = zonedLocalToUtcIso(serviceDate, timeHHMM, timeZone);
+      }
+    } catch (e) {
+      pushErr(e.message);
+    }
+
+    const addressFormatted = raw.cityOrig ? `${raw.orig}, ${raw.cityOrig}` : raw.orig;
+    const destFormatted = raw.cityDest ? `${raw.dest}, ${raw.cityDest}` : raw.dest;
+
+    const payload = {
+      external_booking_id: raw.id || '',
+      name: raw.name || 'Unknown',
+      phone: phoneClean, // keep empty if missing
+      date: utcIso,      // ISO8601 with ms + Z
+      address: { formatted: addressFormatted || '' },
+      destination: { formatted: destFormatted || '' },
+      passengers: paxCount,
+      instructions
+    };
+
+    // If we’re strict and missing critical fields, mark as error
+    if (strict && (payload.address.formatted === '' || payload.destination.formatted === '' || !payload.date)) {
+      status = 'error';
+      if (!messages.length) messages.push("Row failed strict validation");
+    }
+
+    return {
+      idx: index,
+      selected: false,
+      status,
+      messages,
+      payload,
+      localTimeStr: timeHHMM ? toLocalDisplay(serviceDate, timeHHMM) : '',
+      utcIso: utcIso || '',
+      isDuplicate: false
+    };
+  }
+
+  // UI: filtering, search, selection
+  els.searchBox.addEventListener('input', () => renderAndUpdate());
+  els.filterMode.addEventListener('change', () => renderAndUpdate());
+
+  els.btnSelectValid.addEventListener('click', () => {
+    parsedBatch.forEach(r => r.selected = (r.status === 'valid'));
+    els.checkAll.checked = false;
+    renderAndUpdate();
+  });
+
+  els.btnClearSelect.addEventListener('click', () => {
+    parsedBatch.forEach(r => r.selected = false);
+    els.checkAll.checked = false;
+    renderAndUpdate();
+  });
+
+  els.checkAll.addEventListener('change', () => {
+    const visible = getVisibleItems();
+    visible.forEach(r => r.selected = els.checkAll.checked);
+    renderAndUpdate();
+  });
+
+  function getVisibleItems() {
+    const q = (els.searchBox.value || '').trim().toLowerCase();
+    const mode = els.filterMode.value;
+
+    return parsedBatch.filter(r => {
+      // search
+      if (q) {
+        const hay = [
+          r.payload.external_booking_id,
+          r.payload.name,
+          r.payload.address?.formatted,
+          r.payload.destination?.formatted
+        ].join(' ').toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+
+      // filter
+      if (mode === 'all') return true;
+      if (mode === 'selected') return r.selected;
+      if (mode === 'valid') return r.status === 'valid';
+      if (mode === 'warn') return r.status === 'warn';
+      if (mode === 'error') return r.status === 'error';
+      if (mode === 'dupes') return r.isDuplicate;
+      return true;
+    });
+  }
+
+  function renderAndUpdate() {
+    renderTable(getVisibleItems());
+    updateCounts();
+    // enable import if any selected that are not errors
+    const importable = parsedBatch.filter(r => r.selected && r.status !== 'error');
+    els.btnImport.disabled = importable.length === 0;
+  }
+
+  function updateCounts() {
+    const total = parsedBatch.length;
+    const valid = parsedBatch.filter(r => r.status === 'valid').length;
+    const warn = parsedBatch.filter(r => r.status === 'warn').length;
+    const err  = parsedBatch.filter(r => r.status === 'error').length;
+    const sel  = parsedBatch.filter(r => r.selected).length;
+    const dup  = parsedBatch.filter(r => r.isDuplicate).length;
+
+    els.tripCount.textContent = total;
+    els.validCount.textContent = valid;
+    els.warnCount.textContent = warn;
+    els.errCount.textContent = err;
+    els.selectedCount.textContent = sel;
+
+    const tzLabel = els.timeZone.value;
+    els.summaryText.innerHTML =
+      `Found <b>${total}</b> trips — <span class="badge badge-ok">Valid ${valid}</span> ` +
+      `<span class="badge badge-warn">Warn ${warn}</span> ` +
+      `<span class="badge badge-err">Error ${err}</span>` +
+      (dup ? ` &nbsp; <span class="badge badge-warn">Duplicates ${dup}</span>` : '') +
+      `<div class="muted" style="margin-top:6px;">Pickup times are interpreted in <b>${tzLabel}</b> and converted to UTC ISO Z (with milliseconds).</div>`;
+  }
+
+  function renderTable(items) {
+    els.tableBody.innerHTML = '';
+
+    items.forEach((item, displayIdx) => {
+      const p = item.payload;
+
+      const badge =
+        item.status === 'valid' ? `<span class="badge badge-ok">Valid</span>` :
+        item.status === 'warn'  ? `<span class="badge badge-warn">Warn</span>` :
+                                  `<span class="badge badge-err">Error</span>`;
+
+      const msgText = item.status === 'valid'
+        ? (p.instructions || '—')
+        : item.messages.join(' • ');
+
+      const tr = document.createElement('tr');
+
+      tr.innerHTML = `
+        <td class="nowrap">
+          <input type="checkbox" ${item.selected ? 'checked' : ''} data-idx="${item.idx}" />
+        </td>
+        <td>${displayIdx + 1}</td>
+        <td class="mono">${escapeHtml(p.external_booking_id || '—')}</td>
+        <td>${escapeHtml(p.name || '—')}</td>
+        <td class="mono nowrap">${escapeHtml(item.localTimeStr || '—')}</td>
+        <td class="mono nowrap">${escapeHtml(item.utcIso || '—')}</td>
+        <td>${escapeHtml(p.address?.formatted || '—')}</td>
+        <td>${escapeHtml(p.destination?.formatted || '—')}</td>
+        <td>${badge}${item.isDuplicate ? ` <span class="badge badge-warn" title="Duplicate ID">Dupe</span>` : ''}</td>
+        <td class="${item.status === 'error' ? 'text-red' : ''}">
+          ${escapeHtml(msgText)}
+        </td>
+      `;
+
+      // checkbox handler
+      tr.querySelector('input[type="checkbox"]').addEventListener('change', (e) => {
+        const idx = Number(e.target.getAttribute('data-idx'));
+        const found = parsedBatch.find(r => r.idx === idx);
+        if (found) found.selected = e.target.checked;
+        renderAndUpdate();
+      });
+
+      els.tableBody.appendChild(tr);
+    });
+  }
+
+  function escapeHtml(s) {
+    return String(s ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  // EXPORT SELECTED JSON
+  els.btnExportJson.addEventListener('click', () => {
+    const selected = parsedBatch.filter(r => r.selected);
+    if (!selected.length) return alert("No rows selected.");
+    const payloads = selected.map(r => r.payload);
+
+    const blob = new Blob([JSON.stringify(payloads, null, 2)], { type:'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `icabbi-import-selected-${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  // IMPORT (SIMULATION / PLUG REAL ENDPOINT HERE)
+  els.btnImport.addEventListener('click', async () => {
+    const selected = parsedBatch.filter(r => r.selected && r.status !== 'error');
+    if (!selected.length) return alert("No importable rows selected (errors are blocked).");
+
+    if (!confirm(`Import ${selected.length} selected trips?`)) return;
+
+    els.btnImport.innerText = "Importing…";
+    els.btnImport.disabled = true;
+
+    try {
+      for (let i = 0; i < selected.length; i++) {
+        const trip = selected[i];
+
+        console.log("POSTing to iCabbi:", trip.payload);
+
+        // ✅ REAL CALL (uncomment + fill in)
+        // const ICABBI_URL = "https://api.icabbi.us/us4/bookings/add";
+        // const AUTH_HEADER = "Basic YOUR_BASE64";
+        // const resp = await fetch(ICABBI_URL, {
+        //   method: "POST",
+        //   headers: {
+        //     "Content-Type": "application/json",
+        //     "Authorization": AUTH_HEADER
+        //   },
+        //   body: JSON.stringify(trip.payload)
+        // });
+        // if (!resp.ok) {
+        //   const txt = await resp.text();
+        //   throw new Error(`Row ${i+1} failed: ${resp.status} ${txt}`);
+        // }
+
+        await new Promise(r => setTimeout(r, 60));
+      }
+
+      alert("Batch processed! (Simulation) Check console logs.");
+    } catch (e) {
+      console.error(e);
+      alert("Import error: " + e.message);
+    } finally {
+      els.btnImport.innerText = "Import Selected to iCabbi";
+      renderAndUpdate();
+    }
+  });
+</script>
+
+</body>
+</html>
