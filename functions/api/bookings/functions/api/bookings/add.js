@@ -1,7 +1,7 @@
 export async function onRequest(context) {
   const { request, env } = context;
 
-  // CORS preflight
+  // Handle CORS preflight
   if (request.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
@@ -9,6 +9,7 @@ export async function onRequest(context) {
     });
   }
 
+  // Only allow POST
   if (request.method !== "POST") {
     return new Response("Method Not Allowed", {
       status: 405,
@@ -16,18 +17,23 @@ export async function onRequest(context) {
     });
   }
 
-  // Read the payload your HTML sends
-  const bodyText = await request.text();
+  if (!env.ICABBI_AUTH) {
+    return new Response("Missing ICABBI_AUTH secret", {
+      status: 500,
+      headers: corsHeaders(request),
+    });
+  }
+
+  const body = await request.text();
 
   // Forward to iCabbi
   const upstream = await fetch("https://api.icabbi.us/us4/bookings/add", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      // IMPORTANT: set this as a Pages secret called ICABBI_AUTH
       "Authorization": env.ICABBI_AUTH,
     },
-    body: bodyText,
+    body,
   });
 
   const respText = await upstream.text();
@@ -42,9 +48,14 @@ export async function onRequest(context) {
 }
 
 function corsHeaders(request) {
-  const origin = request.headers.get("Origin") || "*";
+  const origin = request.headers.get("Origin") || "";
+
+  // Lock this to your GitHub Pages site
+  const allowedOrigin = "https://haildir1212121.github.io";
+
   return {
-    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Origin": origin === allowedOrigin ? origin : allowedOrigin,
+    "Vary": "Origin",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     "Access-Control-Max-Age": "86400",
