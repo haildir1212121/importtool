@@ -50,4 +50,3 @@ function corsHeaders(request) {
     "Access-Control-Max-Age": "86400",
   };
 }
-
