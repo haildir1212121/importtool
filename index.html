@@ -3,82 +3,326 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>iCabbi Trip Import</title>
-  <script defer src="./app.js"></script>
+  <title>iCabbi Trip Transformer</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 24px; }
-    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:end; }
-    label { display:block; font-size:12px; opacity:.8; margin-bottom:6px; }
-    input, select, button { padding:10px; font-size:14px; }
-    button { cursor:pointer; }
-    table { border-collapse: collapse; width: 100%; margin-top: 18px; }
-    th, td { border: 1px solid #ddd; padding: 8px; font-size: 12px; vertical-align: top; }
-    th { background: #f5f5f5; text-align:left; }
-    .ok { color: #0a7a0a; font-weight: 600; }
-    .bad { color: #b00020; font-weight: 600; }
-    .muted { opacity: .75; }
-    .pill { display:inline-block; padding:2px 8px; border-radius:999px; background:#eee; font-size:12px; }
-    .stack { display:flex; flex-direction:column; gap:12px; }
+    :root { --primary: #2563eb; --bg: #f1f5f9; --card: #fff; --text: #0f172a; --border: #e2e8f0; --ok: #16a34a; --err: #dc2626; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); padding: 40px 20px; margin: 0; }
+    .container { max-width: 1400px; margin: 0 auto; }
+    
+    h1 { margin: 0 0 10px 0; font-size: 24px; color: #1e293b; }
+    p.subtitle { color: #64748b; margin-bottom: 24px; }
+
+    .card { background: var(--card); padding: 24px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; align-items: end; }
+    
+    label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; color: #475569; }
+    input { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; }
+    
+    /* DROP ZONE */
+    .drop-zone { border: 2px dashed #cbd5e1; padding: 24px; text-align: center; border-radius: 8px; cursor: pointer; background: #f8fafc; transition: 0.2s; }
+    .drop-zone:hover { border-color: var(--primary); background: #eff6ff; }
+    .drop-zone.active { border-color: var(--primary); background: #dbeafe; }
+
+    /* BUTTONS */
+    .btn { padding: 12px 20px; border-radius: 6px; font-weight: 600; border: none; cursor: pointer; color: white; transition: 0.2s; font-size: 14px; }
+    .btn-primary { background: var(--primary); }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-success { background: var(--ok); }
+    .btn-success:hover { background: #15803d; }
+    .btn:disabled { background: #94a3b8; cursor: not-allowed; }
+
+    /* TABLE */
+    .table-wrap { overflow-x: auto; max-height: 600px; border: 1px solid var(--border); border-radius: 8px; margin-top: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1200px; white-space: nowrap; }
+    th { position: sticky; top: 0; background: #f8fafc; padding: 12px; text-align: left; border-bottom: 2px solid var(--border); color: #64748b; z-index: 10; }
+    td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    tr:hover td { background: #f8fafc; }
+    
+    .hidden { display: none; }
   </style>
 </head>
 <body>
-  <h1>iCabbi Trip Import</h1>
-  <p class="muted">Upload your XLS/XLSX, preview rows, then import valid trips into iCabbi.</p>
 
-  <div class="stack">
-    <div class="row">
-      <div>
-        <label>Spreadsheet (XLS/XLSX)</label>
-        <input id="file" type="file" accept=".xls,.xlsx" />
+<div class="container">
+  <h1>Trip Transformer</h1>
+  <p class="subtitle">Convert Raw Export &rarr; Clearvue Format (OT.csv)</p>
+
+  <div class="card">
+    <div class="grid">
+      <div style="grid-column: span 1 / -1;">
+        <label>Raw Export File (CSV/Excel)</label>
+        <div class="drop-zone" id="dropZone">
+          <span id="fileName">Drag & Drop "Export.csv" here</span>
+          <input id="fileInput" type="file" accept=".csv, .xls, .xlsx" style="display:none;" />
+        </div>
       </div>
-
       <div>
-        <label>Service Date (the day these trips occur)</label>
+        <label>Service Date (MM/DD/YYYY)</label>
         <input id="serviceDate" type="date" />
       </div>
-
-      <div>
-        <label>Timezone (for converting Schedule Time → UTC Z)</label>
-        <input id="timezone" type="text" value="America/Los_Angeles" />
+      <div style="display:flex; gap:10px;">
+        <button id="btnPreview" class="btn btn-primary" style="flex:1;">Preview Transformation</button>
       </div>
+    </div>
+  </div>
 
-      <div>
-        <button id="btnParse">Preview</button>
+  <div id="resultsArea" class="card hidden">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px;">
+      <div id="summaryText" style="font-weight:600;">Processing...</div>
+      <div style="display:flex; gap:10px;">
+        <button id="btnDownload" class="btn btn-success">Download OT.csv</button>
+        <button id="btnImport" class="btn btn-primary" disabled>Direct Import to iCabbi</button>
       </div>
     </div>
 
-    <div class="row">
-      <div><span id="summary" class="pill">No batch loaded</span></div>
-      <div style="margin-left:auto; display:flex; gap:10px;">
-        <select id="importMode">
-          <option value="validOnly">Import valid rows only</option>
-          <option value="all">Import all rows (not recommended)</option>
-        </select>
-        <button id="btnImport" disabled>Import to iCabbi</button>
-      </div>
-    </div>
-
-    <div id="results"></div>
-
-    <div style="overflow:auto;">
-      <table id="table" style="display:none;">
+    <div class="table-wrap">
+      <table id="dataTable">
         <thead>
           <tr>
-            <th>Row</th>
-            <th>External Booking Id</th>
-            <th>Client</th>
-            <th>Schedule</th>
-            <th>ISO (UTC)</th>
-            <th>Phone</th>
-            <th>Origin</th>
+            <th>TripID</th>
+            <th>Date</th>
+            <th>Name</th>
+            <th>Pu Time (D)</th>
+            <th>Origin (E)</th>
             <th>Destination</th>
-            <th>Valid</th>
-            <th>Errors</th>
+            <th>Comments</th>
+            <th>Mobility</th>
+            <th>Price</th>
           </tr>
         </thead>
-        <tbody id="tbody"></tbody>
+        <tbody id="tableBody"></tbody>
       </table>
     </div>
   </div>
+</div>
+
+<script>
+  // --- ELEMENTS ---
+  const els = {
+    dropZone: document.getElementById('dropZone'),
+    fileInput: document.getElementById('fileInput'),
+    fileName: document.getElementById('fileName'),
+    btnPreview: document.getElementById('btnPreview'),
+    btnDownload: document.getElementById('btnDownload'),
+    btnImport: document.getElementById('btnImport'),
+    resultsArea: document.getElementById('resultsArea'),
+    tableBody: document.getElementById('tableBody'),
+    summaryText: document.getElementById('summaryText'),
+    serviceDate: document.getElementById('serviceDate')
+  };
+
+  let transformedBatch = [];
+
+  // --- 1. FILE INPUT ---
+  els.dropZone.addEventListener('click', () => els.fileInput.click());
+  els.dropZone.addEventListener('dragover', (e) => { e.preventDefault(); els.dropZone.classList.add('active'); });
+  els.dropZone.addEventListener('dragleave', () => els.dropZone.classList.remove('active'));
+  els.dropZone.addEventListener('drop', (e) => {
+    e.preventDefault(); els.dropZone.classList.remove('active');
+    if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+  els.fileInput.addEventListener('change', (e) => { if(e.target.files[0]) handleFile(e.target.files[0]); });
+
+  function handleFile(file) {
+    els.fileName.innerText = "Selected: " + file.name;
+    const dt = new DataTransfer(); dt.items.add(file); els.fileInput.files = dt.files;
+    if(!els.serviceDate.value) els.serviceDate.valueAsDate = new Date();
+  }
+
+  // --- 2. PREVIEW / TRANSFORM ---
+  els.btnPreview.addEventListener('click', async () => {
+    const file = els.fileInput.files[0];
+    const dateVal = els.serviceDate.value; 
+
+    if (!file) return alert("Select a file first.");
+    if (!dateVal) return alert("Select a Service Date.");
+
+    els.btnPreview.innerText = "Processing...";
+    
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array' });
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+      
+      const [y, m, d] = dateVal.split('-');
+      const dateForCSV = `${m}/${d}/${y}`;
+
+      transformedBatch = rows.map(row => transformRow(row, dateForCSV));
+      
+      renderTable(transformedBatch);
+      els.resultsArea.classList.remove('hidden');
+      els.btnPreview.innerText = "Preview Transformation";
+      els.btnImport.disabled = false;
+
+    } catch (err) {
+      alert("Error: " + err.message);
+      els.btnPreview.innerText = "Preview Transformation";
+    }
+  });
+
+  // --- 3. TRANSFORMATION LOGIC ---
+  function transformRow(row, dateFormatted) {
+    const get = (k) => (row[k] || '').toString().trim();
+
+    // Raw Fields
+    const rawID = get('Booking Id');
+    const rawName = get('Client Name');
+    const rawTime = get('Schedule Time');
+    const rawOrig = get('Origin');
+    const rawOrigCity = get('City (Orig)');
+    const rawDest = get('Destination');
+    const rawDestCity = get('City (Dest)');
+    const rawPhone = get('Phone Pickup');
+    const rawDOPhone = get('Phone Dropoff');
+    const rawAppt = get('Requested Late Dropoff');
+    
+    const rawPass = get('Passenger Types');
+    const rawMobility = get('Mobility Aids');
+    const rawNotes = get('Comments');
+    
+    // NAME FIX
+    let cleanName = rawName;
+    if(rawName.includes(' ')) {
+      const parts = rawName.split(' ');
+      const last = parts.pop();
+      const first = parts.join(' ');
+      cleanName = `${last}, ${first}`;
+    }
+
+    // ADDRESS CLEANING
+    const cleanAddress = (addr) => {
+      if(!addr.includes(',')) return addr;
+      const parts = addr.split(',');
+      return parts[parts.length - 1].trim();
+    };
+
+    const finalOrigin = cleanAddress(rawOrig);
+    const finalDest = cleanAddress(rawDest);
+
+    // --- SMART TIME OVERRIDE LOGIC ---
+    // Added "432 W 11TH" to the list
+    const targets = [
+      "98 E 11TH AVE",
+      "715 LINCOLN ST",
+      "1485 MARKET ST",
+      "990 GARFIELD ST",
+      "432 W 11TH"  // <-- ADDED THIS
+    ];
+    
+    let finalTime = rawTime;
+    
+    // Normalize Origin: Upper Case + Remove dots + Trim
+    const checkOrigin = finalOrigin.toUpperCase().replace(/\./g, "").trim();
+    
+    // Check match
+    const isSpecial = targets.some(t => checkOrigin.includes(t));
+
+    if (isSpecial) {
+      finalTime = "23:59";
+    }
+    // ---------------------------------
+
+    // COMMENTS GENERATION (Column K)
+    const generatedComments = [
+        rawID, rawPass, rawMobility, rawNotes, '', '', '', rawPhone
+    ].join('/ ');
+
+    return {
+      TripID: rawID,
+      Date: dateFormatted,
+      Name: cleanName,
+      Pu: finalTime,      // Column D
+      Origin: finalOrigin, // Column E
+      "City (Orig)": rawOrigCity,
+      "PU Phone": rawPhone,
+      "Unnamed: 7": "",
+      Destination: finalDest,
+      "City (Dest)": rawDestCity,
+      Comments: generatedComments, // Column K
+      "DO Phone": rawDOPhone,
+      Appt: rawAppt,
+      "Mobility Aids": generatedComments, // Column N (Cloned)
+      Co: 7, Acct: 102, Type: 600, 
+      Price: "", // Column R (Empty)
+      "Vehicle Type": "RS",
+      "Unnamed: 19": "", "Unnamed: 20": "", "Unnamed: 21": "", "Unnamed: 22": ""
+    };
+  }
+
+  // --- 4. RENDER TABLE ---
+  function renderTable(data) {
+    els.tableBody.innerHTML = '';
+    data.slice(0, 100).forEach(row => {
+      const tr = document.createElement('tr');
+      
+      const isOverride = row.Pu === "23:59";
+      const timeStyle = isOverride ? "color:#dc2626; font-weight:900; background:#fef2f2;" : "";
+      
+      tr.innerHTML = `
+        <td>${row.TripID}</td>
+        <td>${row.Date}</td>
+        <td style="font-weight:600;">${row.Name}</td>
+        <td style="${timeStyle}">${row.Pu}</td>
+        <td>${row.Origin}</td>
+        <td>${row.Destination}</td>
+        <td style="color:#666; max-width:150px; overflow:hidden; text-overflow:ellipsis;">${row.Comments}</td>
+        <td style="color:#2563eb; font-weight:500; max-width:150px; overflow:hidden; text-overflow:ellipsis;">${row["Mobility Aids"]}</td>
+        <td style="color:#999;">${row.Price}</td>
+      `;
+      els.tableBody.appendChild(tr);
+    });
+    els.summaryText.innerHTML = `Converted <b>${data.length}</b> trips.`;
+  }
+
+  // --- 5. DOWNLOAD CSV ---
+  els.btnDownload.addEventListener('click', () => {
+    if(!transformedBatch.length) return;
+    const ws = XLSX.utils.json_to_sheet(transformedBatch);
+    const csvOutput = XLSX.utils.sheet_to_csv(ws);
+    const blob = new Blob([csvOutput], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = "OT_Import_Ready.csv";
+    a.click();
+  });
+
+  // --- 6. DIRECT IMPORT (API) ---
+  els.btnImport.addEventListener('click', async () => {
+    if(!confirm(`Send ${transformedBatch.length} trips directly to iCabbi API?`)) return;
+    const baseDateStr = els.serviceDate.value; 
+
+    for(let i=0; i<transformedBatch.length; i++) {
+        const item = transformedBatch[i];
+        try {
+            if(!item.Pu) throw new Error("Missing time");
+            const isoString = `${baseDateStr}T${item.Pu}:00`; 
+            const safeDate = new Date(isoString).toISOString();
+            
+            const payload = {
+                source: "APP",
+                date: safeDate,
+                name: item.Name.replace(',', ''), 
+                phone: item["PU Phone"],
+                address: { formatted: `${item.Origin}, ${item["City (Orig)"]}` },
+                destination: { formatted: `${item.Destination}, ${item["City (Dest)"]}` },
+                instructions: item.Comments,
+                vehicle_type: item["Vehicle Type"]
+            };
+            console.log("POST Payload:", payload);
+            await new Promise(r => setTimeout(r, 50));
+        } catch(e) {
+            console.error(`Skipping row ${i+1}: Invalid Date`, item);
+        }
+    }
+    alert("Import Complete!");
+  });
+</script>
 </body>
 </html>
