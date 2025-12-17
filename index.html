@@ -3,758 +3,82 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>iCabbi Import Tool (One Page)</title>
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-
+  <title>iCabbi Trip Import</title>
+  <script defer src="./app.js"></script>
   <style>
-    :root{
-      --primary:#4f46e5; --bg:#f3f4f6; --card:#fff; --text:#111827; --muted:#6b7280; --border:#e5e7eb;
-      --ok-bg:#d1fae5; --ok-t:#065f46;
-      --warn-bg:#ffedd5; --warn-t:#9a3412;
-      --err-bg:#fee2e2; --err-t:#991b1b;
-      --info-bg:#dbeafe; --info-t:#1e40af;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;padding:36px 18px;background:var(--bg);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif}
-    .container{max-width:1320px;margin:0 auto}
-    h1{margin:0 0 8px;font-size:22px;font-weight:900}
-    p{margin:0 0 18px;color:#555;line-height:1.4}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;box-shadow:0 4px 14px rgba(0,0,0,.06);margin-bottom:16px}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px 14px;align-items:end}
-    label{display:block;font-size:12px;font-weight:900;margin-bottom:6px}
-    input,select,textarea{width:100%;padding:10px 11px;border:1px solid var(--border);border-radius:10px;font-size:14px;background:#fff;outline:none}
-    textarea{min-height:72px;resize:vertical}
-    input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(79,70,229,.12)}
-    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .grow{flex:1}
-    .drop{border:2px dashed #cbd5e1;border-radius:12px;padding:16px;background:#f8fafc;cursor:pointer;transition:.15s;text-align:center;font-weight:800;color:#334155;user-select:none}
-    .drop:hover{border-color:var(--primary);background:#eef2ff}
-    .drop.active{border-color:var(--primary);background:#e0e7ff}
-    .btn{border:none;border-radius:10px;padding:11px 14px;font-weight:1000;cursor:pointer;font-size:14px;transition:.15s;white-space:nowrap}
-    .btn-primary{background:var(--primary);color:#fff}
-    .btn-primary:hover{background:#4338ca}
-    .btn-ghost{background:#fff;border:1px solid var(--border);color:#111}
-    .btn-ghost:hover{background:#f9fafb}
-    .btn:disabled{opacity:.55;cursor:not-allowed}
-    .badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:1000;letter-spacing:.4px;text-transform:uppercase}
-    .ok{background:var(--ok-bg);color:var(--ok-t)}
-    .warn{background:var(--warn-bg);color:var(--warn-t)}
-    .err{background:var(--err-bg);color:var(--err-t)}
-    .info{background:var(--info-bg);color:var(--info-t)}
-    .muted{color:var(--muted);font-size:12px}
-    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
-    .hidden{display:none}
-    .table-wrap{border:1px solid var(--border);border-radius:12px;overflow:auto;background:#fff;max-height:590px}
-    table{width:100%;border-collapse:collapse;min-width:1350px;font-size:13px}
-    th{position:sticky;top:0;z-index:5;background:#f9fafb;border-bottom:2px solid var(--border);text-align:left;padding:12px;color:#6b7280;font-weight:1000}
-    td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top}
-    tr:hover td{background:#f9fafb}
-    .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:999px;background:#fff;font-size:13px}
-    .k{font-weight:1000}
-    .progress{height:10px;border-radius:999px;background:#e5e7eb;overflow:hidden;border:1px solid var(--border)}
-    .bar{height:100%;width:0%;background:var(--primary);transition:width .15s}
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 24px; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:end; }
+    label { display:block; font-size:12px; opacity:.8; margin-bottom:6px; }
+    input, select, button { padding:10px; font-size:14px; }
+    button { cursor:pointer; }
+    table { border-collapse: collapse; width: 100%; margin-top: 18px; }
+    th, td { border: 1px solid #ddd; padding: 8px; font-size: 12px; vertical-align: top; }
+    th { background: #f5f5f5; text-align:left; }
+    .ok { color: #0a7a0a; font-weight: 600; }
+    .bad { color: #b00020; font-weight: 600; }
+    .muted { opacity: .75; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; background:#eee; font-size:12px; }
+    .stack { display:flex; flex-direction:column; gap:12px; }
   </style>
 </head>
-
 <body>
-<div class="container">
-  <h1>iCabbi Import Tool (Single Page)</h1>
-  <p>
-    This page can import in two ways:
-    <span class="badge info">Direct Browser Import</span> (works only if iCabbi allows CORS)
-    or <span class="badge info">Curl Export</span> (always works).
-  </p>
+  <h1>iCabbi Trip Import</h1>
+  <p class="muted">Upload your XLS/XLSX, preview rows, then import valid trips into iCabbi.</p>
 
-  <div class="card">
-    <div class="grid">
-      <div style="grid-column: span 2 / -1;">
-        <label>iCabbi Authorization Header (Basic …)</label>
-        <input id="authHeader" class="mono" placeholder="Basic YjI4NWMw...==" />
-        <div class="muted" style="margin-top:6px;">
-          You said you don’t care about security — ok. This value will be stored in <span class="mono">sessionStorage</span> (clears when tab closes).
-        </div>
+  <div class="stack">
+    <div class="row">
+      <div>
+        <label>Spreadsheet (XLS/XLSX)</label>
+        <input id="file" type="file" accept=".xls,.xlsx" />
       </div>
 
       <div>
-        <label>iCabbi Endpoint</label>
-        <input id="icabbiUrl" class="mono" value="https://api.icabbi.us/us4/bookings/add" />
-      </div>
-
-      <div>
-        <label>Service Date (local)</label>
+        <label>Service Date (the day these trips occur)</label>
         <input id="serviceDate" type="date" />
       </div>
 
       <div>
-        <label>Time Zone</label>
-        <select id="timeZone">
-          <option value="America/Los_Angeles" selected>America/Los_Angeles (Pacific)</option>
-          <option value="UTC">UTC</option>
+        <label>Timezone (for converting Schedule Time → UTC Z)</label>
+        <input id="timezone" type="text" value="America/Los_Angeles" />
+      </div>
+
+      <div>
+        <button id="btnParse">Preview</button>
+      </div>
+    </div>
+
+    <div class="row">
+      <div><span id="summary" class="pill">No batch loaded</span></div>
+      <div style="margin-left:auto; display:flex; gap:10px;">
+        <select id="importMode">
+          <option value="validOnly">Import valid rows only</option>
+          <option value="all">Import all rows (not recommended)</option>
         </select>
-      </div>
-
-      <div>
-        <label>Strict validation</label>
-        <select id="strictMode">
-          <option value="on" selected>On (block bad rows)</option>
-          <option value="off">Off (warn, still allow)</option>
-        </select>
-      </div>
-
-      <div>
-        <label>Safety</label>
-        <select id="safetyMode">
-          <option value="one" selected>Import only 1 trip (test)</option>
-          <option value="all">Import all selected</option>
-        </select>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="grid">
-      <div style="grid-column: span 2 / -1;">
-        <label>Spreadsheet File</label>
-        <div class="drop" id="dropZone">
-          <span id="fileName">Click to select file or Drag & Drop here</span>
-          <input id="fileInput" type="file" accept=".csv,.xls,.xlsx" style="display:none;" />
-        </div>
-      </div>
-
-      <div>
-        <button id="btnParse" class="btn btn-primary" style="width:100%;">Preview Trips</button>
-      </div>
-      <div>
-        <button id="btnExportCurl" class="btn btn-ghost" style="width:100%;">Export Curl Script</button>
-      </div>
-      <div>
-        <button id="btnImport" class="btn btn-primary" style="width:100%;" disabled>Direct Import Selected</button>
+        <button id="btnImport" disabled>Import to iCabbi</button>
       </div>
     </div>
 
-    <div class="muted" style="margin-top:10px;">
-      If Direct Import fails with CORS/405/etc, use “Export Curl Script” and run it in your terminal (PowerShell works).
-    </div>
-  </div>
+    <div id="results"></div>
 
-  <div id="resultsArea" class="card hidden">
-    <div class="row" style="justify-content:space-between;align-items:flex-start;">
-      <div class="row">
-        <span class="pill"><span class="k">Trips</span> <span id="tripCount">0</span></span>
-        <span class="pill"><span class="k">Valid</span> <span id="validCount">0</span></span>
-        <span class="pill"><span class="k">Warnings</span> <span id="warnCount">0</span></span>
-        <span class="pill"><span class="k">Errors</span> <span id="errCount">0</span></span>
-        <span class="pill"><span class="k">Selected</span> <span id="selectedCount">0</span></span>
-      </div>
-      <div style="min-width:340px;">
-        <div class="muted mono" id="importStatus">Idle</div>
-        <div class="progress" style="margin-top:8px;">
-          <div class="bar" id="progressBar"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="row" style="margin-top:12px;">
-      <input id="searchBox" class="grow" placeholder="Search name / origin / destination / booking id..." />
-      <select id="filterMode" style="min-width:200px;">
-        <option value="all" selected>Show: All</option>
-        <option value="selected">Show: Selected</option>
-        <option value="valid">Show: Valid only</option>
-        <option value="warn">Show: Warnings only</option>
-        <option value="error">Show: Errors only</option>
-        <option value="dupes">Show: Duplicates only</option>
-        <option value="imported">Show: Imported only</option>
-        <option value="failed">Show: Failed only</option>
-      </select>
-
-      <button id="btnSelectValid" class="btn btn-ghost">Select all valid</button>
-      <button id="btnClearSelect" class="btn btn-ghost">Clear selection</button>
-    </div>
-
-    <div class="muted" id="summaryText" style="margin-top:10px;">—</div>
-
-    <div class="table-wrap" style="margin-top:12px;">
-      <table>
+    <div style="overflow:auto;">
+      <table id="table" style="display:none;">
         <thead>
           <tr>
-            <th width="40"><input id="checkAll" type="checkbox" /></th>
-            <th width="48">#</th>
-            <th class="nowrap">Booking ID</th>
-            <th>Name</th>
-            <th class="nowrap">Pickup (Local)</th>
-            <th class="nowrap">Pickup (UTC Z)</th>
+            <th>Row</th>
+            <th>External Booking Id</th>
+            <th>Client</th>
+            <th>Schedule</th>
+            <th>ISO (UTC)</th>
+            <th>Phone</th>
             <th>Origin</th>
             <th>Destination</th>
-            <th>Status</th>
-            <th>Errors / Warnings / Instructions</th>
-            <th class="nowrap">Import Result</th>
+            <th>Valid</th>
+            <th>Errors</th>
           </tr>
         </thead>
-        <tbody id="tableBody"></tbody>
+        <tbody id="tbody"></tbody>
       </table>
     </div>
-
-    <div class="muted" style="margin-top:10px;">
-      Direct import uses <span class="mono">fetch()</span> with Authorization header. If iCabbi blocks CORS, the browser will stop it.
-      Curl export bypasses the browser and will work.
-    </div>
   </div>
-</div>
-
-<script>
-  const els = {
-    authHeader: document.getElementById('authHeader'),
-    icabbiUrl: document.getElementById('icabbiUrl'),
-    serviceDate: document.getElementById('serviceDate'),
-    timeZone: document.getElementById('timeZone'),
-    strictMode: document.getElementById('strictMode'),
-    safetyMode: document.getElementById('safetyMode'),
-
-    dropZone: document.getElementById('dropZone'),
-    fileInput: document.getElementById('fileInput'),
-    fileName: document.getElementById('fileName'),
-
-    btnParse: document.getElementById('btnParse'),
-    btnImport: document.getElementById('btnImport'),
-    btnExportCurl: document.getElementById('btnExportCurl'),
-
-    resultsArea: document.getElementById('resultsArea'),
-    tableBody: document.getElementById('tableBody'),
-    summaryText: document.getElementById('summaryText'),
-
-    searchBox: document.getElementById('searchBox'),
-    filterMode: document.getElementById('filterMode'),
-    checkAll: document.getElementById('checkAll'),
-    btnSelectValid: document.getElementById('btnSelectValid'),
-    btnClearSelect: document.getElementById('btnClearSelect'),
-
-    tripCount: document.getElementById('tripCount'),
-    validCount: document.getElementById('validCount'),
-    warnCount: document.getElementById('warnCount'),
-    errCount: document.getElementById('errCount'),
-    selectedCount: document.getElementById('selectedCount'),
-
-    importStatus: document.getElementById('importStatus'),
-    progressBar: document.getElementById('progressBar'),
-  };
-
-  let parsedBatch = []; // rows w meta
-  let isImporting = false;
-
-  // sessionStorage for auth
-  const AUTH_KEY = "icabbi_auth_header";
-  els.authHeader.value = sessionStorage.getItem(AUTH_KEY) || "";
-  els.authHeader.addEventListener('input', () => {
-    sessionStorage.setItem(AUTH_KEY, els.authHeader.value || "");
-  });
-
-  if (!els.serviceDate.value) els.serviceDate.valueAsDate = new Date();
-
-  // File picker
-  els.dropZone.addEventListener('click', () => els.fileInput.click());
-  els.dropZone.addEventListener('dragover', e => { e.preventDefault(); els.dropZone.classList.add('active'); });
-  els.dropZone.addEventListener('dragleave', () => els.dropZone.classList.remove('active'));
-  els.dropZone.addEventListener('drop', e => {
-    e.preventDefault(); els.dropZone.classList.remove('active');
-    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
-  });
-  els.fileInput.addEventListener('change', e => {
-    if (e.target.files[0]) handleFile(e.target.files[0]);
-  });
-
-  function handleFile(file){
-    els.fileName.textContent = "Selected: " + file.name;
-    const dt = new DataTransfer();
-    dt.items.add(file);
-    els.fileInput.files = dt.files;
-  }
-
-  // DST-aware timezone conversion
-  function tzOffsetMinutes(timeZone, dateObj) {
-    const dtf = new Intl.DateTimeFormat('en-US', {
-      timeZone,
-      year:'numeric', month:'2-digit', day:'2-digit',
-      hour:'2-digit', minute:'2-digit', second:'2-digit',
-      hour12:false
-    });
-    const parts = dtf.formatToParts(dateObj);
-    const map = {};
-    for (const p of parts) map[p.type] = p.value;
-    const asIfUtc = Date.UTC(
-      Number(map.year), Number(map.month)-1, Number(map.day),
-      Number(map.hour), Number(map.minute), Number(map.second)
-    );
-    return (asIfUtc - dateObj.getTime())/60000;
-  }
-  function zonedLocalToUtcIso(serviceDateYYYYMMDD, timeHHMM, timeZone) {
-    const [y,m,d] = serviceDateYYYYMMDD.split('-').map(Number);
-    const [hh,mm] = timeHHMM.split(':').map(Number);
-    const utcGuess = new Date(Date.UTC(y,m-1,d,hh,mm,0,0));
-    const offset = tzOffsetMinutes(timeZone, utcGuess);
-    const utc = new Date(utcGuess.getTime() - offset*60000);
-    return utc.toISOString();
-  }
-  function normalizeTime(raw){
-    if (raw === null || raw === undefined) return '';
-    if (raw instanceof Date && !isNaN(raw)) {
-      const hh = String(raw.getHours()).padStart(2,'0');
-      const mm = String(raw.getMinutes()).padStart(2,'0');
-      return `${hh}:${mm}`;
-    }
-    const s = String(raw).trim();
-    if (!s) return '';
-
-    if (/^\d+(\.\d+)?$/.test(s)) {
-      const n = Number(s);
-      if (!isNaN(n) && n >= 0 && n < 2) {
-        const totalMinutes = Math.round(n*24*60);
-        const hh = String(Math.floor(totalMinutes/60)%24).padStart(2,'0');
-        const mm = String(totalMinutes%60).padStart(2,'0');
-        return `${hh}:${mm}`;
-      }
-    }
-
-    if (/^\d{3,4}$/.test(s)) {
-      const padded = s.padStart(4,'0');
-      return `${padded.slice(0,2)}:${padded.slice(2,4)}`;
-    }
-
-    const ampm = s.match(/^(\d{1,2})(?::(\d{2}))?\s*([AP]M)$/i);
-    if (ampm) {
-      let hh = Number(ampm[1]);
-      let mm = Number(ampm[2] || '00');
-      const mer = ampm[3].toUpperCase();
-      if (mer === 'PM' && hh !== 12) hh += 12;
-      if (mer === 'AM' && hh === 12) hh = 0;
-      return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
-    }
-
-    const hhmm = s.match(/^(\d{1,2}):(\d{2})$/);
-    if (hhmm) return `${String(Number(hhmm[1])).padStart(2,'0')}:${String(Number(hhmm[2])).padStart(2,'0')}`;
-
-    return '';
-  }
-  function normHeader(h){
-    return String(h||'').trim().toLowerCase().replace(/\s+/g,' ').replace(/[()]/g,'');
-  }
-  function pick(row, candidates){
-    const keys = Object.keys(row||{});
-    const map = new Map(keys.map(k => [normHeader(k), k]));
-    for (const c of candidates) {
-      const real = map.get(normHeader(c));
-      if (real !== undefined) return (row[real] ?? '').toString().trim();
-    }
-    return '';
-  }
-  function cleanPhone(p){
-    const s = (p||'').toString().trim();
-    if (!s) return '';
-    const plus = s.startsWith('+') ? '+' : '';
-    const digits = s.replace(/[^\d]/g,'');
-    return plus + digits;
-  }
-  function escapeHtml(s){
-    return String(s ?? '')
-      .replaceAll('&','&amp;')
-      .replaceAll('<','&lt;')
-      .replaceAll('>','&gt;')
-      .replaceAll('"','&quot;')
-      .replaceAll("'","&#039;");
-  }
-
-  function setProgress(pct){
-    els.progressBar.style.width = `${Math.max(0, Math.min(100, pct))}%`;
-  }
-
-  function updateCounts(){
-    const total = parsedBatch.length;
-    const valid = parsedBatch.filter(r => r.status==='valid').length;
-    const warn  = parsedBatch.filter(r => r.status==='warn').length;
-    const err   = parsedBatch.filter(r => r.status==='error').length;
-    const sel   = parsedBatch.filter(r => r.selected).length;
-    const dup   = parsedBatch.filter(r => r.isDuplicate).length;
-
-    els.tripCount.textContent = total;
-    els.validCount.textContent = valid;
-    els.warnCount.textContent = warn;
-    els.errCount.textContent = err;
-    els.selectedCount.textContent = sel;
-
-    els.summaryText.innerHTML =
-      `Found <b>${total}</b> trips — ` +
-      `<span class="badge ok">Valid ${valid}</span> ` +
-      `<span class="badge warn">Warn ${warn}</span> ` +
-      `<span class="badge err">Error ${err}</span>` +
-      (dup ? ` &nbsp; <span class="badge warn">Duplicates ${dup}</span>` : '');
-  }
-
-  function renderTable(items){
-    els.tableBody.innerHTML = '';
-    items.forEach((item, displayIdx) => {
-      const p = item.payload;
-
-      const vBadge =
-        item.status==='valid' ? `<span class="badge ok">Valid</span>` :
-        item.status==='warn'  ? `<span class="badge warn">Warn</span>` :
-                                `<span class="badge err">Error</span>`;
-
-      const iBadge =
-        item.import.state==='imported' ? `<span class="badge ok">Imported</span>` :
-        item.import.state==='failed'   ? `<span class="badge err">Failed</span>` :
-        item.import.state==='sending'  ? `<span class="badge info">Sending</span>` :
-                                          `<span class="badge info">Idle</span>`;
-
-      const msg = (item.status==='valid') ? (p.instructions || '—') : item.messages.join(' • ');
-      const importMsg = item.import.text || '—';
-
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><input type="checkbox" ${item.selected?'checked':''} data-idx="${item.idx}"></td>
-        <td>${displayIdx+1}</td>
-        <td class="mono">${escapeHtml(p.external_booking_id || '—')}</td>
-        <td>${escapeHtml(p.name || '—')}</td>
-        <td class="mono nowrap">${escapeHtml(item.localTimeStr || '—')}</td>
-        <td class="mono nowrap">${escapeHtml(item.utcIso || '—')}</td>
-        <td>${escapeHtml(p.address?.formatted || '—')}</td>
-        <td>${escapeHtml(p.destination?.formatted || '—')}</td>
-        <td>
-          ${vBadge}
-          ${item.isDuplicate ? ` <span class="badge warn">Dupe</span>` : ``}
-        </td>
-        <td>${escapeHtml(msg)}</td>
-        <td>
-          ${iBadge}
-          <div class="muted mono" style="margin-top:6px;max-width:380px;word-break:break-word;">${escapeHtml(importMsg)}</div>
-        </td>
-      `;
-      tr.querySelector('input[type="checkbox"]').addEventListener('change', (e) => {
-        const idx = Number(e.target.getAttribute('data-idx'));
-        const found = parsedBatch.find(r => r.idx === idx);
-        if (found) found.selected = e.target.checked;
-        renderAndUpdate();
-      });
-      els.tableBody.appendChild(tr);
-    });
-  }
-
-  function getVisibleItems(){
-    const q = (els.searchBox.value||'').trim().toLowerCase();
-    const mode = els.filterMode.value;
-
-    return parsedBatch.filter(r => {
-      if (q) {
-        const hay = [
-          r.payload.external_booking_id,
-          r.payload.name,
-          r.payload.address?.formatted,
-          r.payload.destination?.formatted,
-          r.import.text
-        ].join(' ').toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-
-      if (mode==='all') return true;
-      if (mode==='selected') return r.selected;
-      if (mode==='valid') return r.status==='valid';
-      if (mode==='warn') return r.status==='warn';
-      if (mode==='error') return r.status==='error';
-      if (mode==='dupes') return r.isDuplicate;
-      if (mode==='imported') return r.import.state==='imported';
-      if (mode==='failed') return r.import.state==='failed';
-      return true;
-    });
-  }
-
-  function renderAndUpdate(){
-    updateCounts();
-    renderTable(getVisibleItems());
-    const importable = parsedBatch.filter(r => r.selected && r.status!=='error');
-    els.btnImport.disabled = importable.length===0 || isImporting;
-  }
-
-  function markDuplicates(items){
-    const seen = new Map();
-    for (const it of items) {
-      const id = (it.payload.external_booking_id || '').trim();
-      if (!id) continue;
-      if (!seen.has(id)) seen.set(id, []);
-      seen.get(id).push(it);
-    }
-    for (const [id, arr] of seen.entries()){
-      if (arr.length > 1) {
-        for (const it of arr) {
-          it.isDuplicate = true;
-          it.messages.push(`Duplicate Booking Id in file: ${id}`);
-          if (it.status === 'valid') it.status = 'warn';
-        }
-      }
-    }
-  }
-
-  els.btnSelectValid.addEventListener('click', () => {
-    parsedBatch.forEach(r => r.selected = (r.status === 'valid'));
-    els.checkAll.checked = false;
-    renderAndUpdate();
-  });
-  els.btnClearSelect.addEventListener('click', () => {
-    parsedBatch.forEach(r => r.selected = false);
-    els.checkAll.checked = false;
-    renderAndUpdate();
-  });
-  els.checkAll.addEventListener('change', () => {
-    const visible = getVisibleItems();
-    visible.forEach(r => r.selected = els.checkAll.checked);
-    renderAndUpdate();
-  });
-  els.searchBox.addEventListener('input', renderAndUpdate);
-  els.filterMode.addEventListener('change', renderAndUpdate);
-
-  els.btnParse.addEventListener('click', async () => {
-    const file = els.fileInput.files[0];
-    const serviceDate = els.serviceDate.value;
-    const timeZone = els.timeZone.value;
-    const strict = els.strictMode.value === 'on';
-
-    if (!file) return alert("Select your Export.csv / xlsx first.");
-    if (!serviceDate) return alert("Set Service Date first.");
-    if (!window.XLSX) return alert("SheetJS failed to load.");
-
-    els.btnParse.disabled = true;
-    els.btnParse.textContent = "Processing…";
-
-    try {
-      const data = await file.arrayBuffer();
-      const wb = XLSX.read(data, { type: 'array' });
-      const sheet = wb.SheetNames[0];
-      const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheet], { defval: '' });
-
-      parsedBatch = rows.map((row, i) => {
-        const messages = [];
-        let status = 'valid';
-
-        const raw = {
-          id: pick(row, ['Booking Id','Booking ID','BookingId','Booking']),
-          name: pick(row, ['Client Name','Name','Passenger Name']),
-          time: pick(row, ['Schedule Time','Pickup Time','Time']),
-          phone: pick(row, ['Phone Pickup','Pickup Phone','Phone']),
-          orig: pick(row, ['Origin','Pickup','Pickup Address']),
-          dest: pick(row, ['Destination','Dropoff','Dropoff Address']),
-          cityOrig: pick(row, ['City (Orig)','City Orig','Origin City']),
-          cityDest: pick(row, ['City (Dest)','City Dest','Destination City']),
-          pax: pick(row, ['Passenger Types','Passenger Type']),
-          comments: pick(row, ['Comments','Comment','Notes']),
-          mobility: pick(row, ['Mobility Aids','Mobility']),
-          space: pick(row, ['Space Types','Space']),
-          late: pick(row, ['Requested Late Dropoff','Late Dropoff'])
-        };
-
-        const timeHHMM = normalizeTime(raw.time);
-
-        const instructions = [
-          raw.comments,
-          raw.late ? `Late Dropoff Requested: ${raw.late}` : '',
-          raw.mobility ? `Mobility: ${raw.mobility}` : '',
-          raw.space ? `Space: ${raw.space}` : ''
-        ].filter(Boolean).join(' | ');
-
-        const paxCount = raw.pax ? raw.pax.split(',').map(s => s.trim()).filter(Boolean).length : 1;
-
-        function pushErr(msg){
-          if (strict) status = 'error';
-          else if (status === 'valid') status = 'warn';
-          messages.push(msg);
-        }
-
-        if (!raw.name) pushErr("Missing Client Name");
-        if (!raw.orig) pushErr("Missing Origin");
-        if (!raw.dest) pushErr("Missing Destination");
-        if (!timeHHMM) pushErr(`Missing/Invalid Schedule Time: "${raw.time}"`);
-
-        const phoneClean = cleanPhone(raw.phone);
-        if (raw.phone && phoneClean.replace('+','').length < 10) {
-          messages.push(`Phone looks short: "${raw.phone}"`);
-          if (status === 'valid') status = 'warn';
-        }
-
-        let utcIso = '';
-        try {
-          if (timeZone === 'UTC') {
-            const combined = new Date(`${serviceDate}T${timeHHMM}:00.000Z`);
-            if (isNaN(combined)) throw new Error("Invalid UTC date/time");
-            utcIso = combined.toISOString();
-          } else {
-            utcIso = zonedLocalToUtcIso(serviceDate, timeHHMM, timeZone);
-          }
-        } catch (e) {
-          pushErr(e.message);
-        }
-
-        const addressFormatted = raw.cityOrig ? `${raw.orig}, ${raw.cityOrig}` : raw.orig;
-        const destFormatted = raw.cityDest ? `${raw.dest}, ${raw.cityDest}` : raw.dest;
-
-        const payload = {
-          external_booking_id: raw.id || '',
-          name: raw.name || 'Unknown',
-          phone: phoneClean,
-          date: utcIso,
-          address: { formatted: addressFormatted || '' },
-          destination: { formatted: destFormatted || '' },
-          passengers: paxCount,
-          instructions
-        };
-
-        if (strict && (!payload.address.formatted || !payload.destination.formatted || !payload.date)) {
-          status = 'error';
-          if (!messages.length) messages.push("Row failed strict validation");
-        }
-
-        return {
-          idx: i,
-          selected: (status === 'valid'),
-          status,
-          messages,
-          payload,
-          localTimeStr: timeHHMM ? `${serviceDate} ${timeHHMM}` : '',
-          utcIso: utcIso || '',
-          isDuplicate: false,
-          import: { state: 'idle', text: '' }
-        };
-      });
-
-      markDuplicates(parsedBatch);
-
-      els.resultsArea.classList.remove('hidden');
-      els.importStatus.textContent = "Idle";
-      setProgress(0);
-      renderAndUpdate();
-
-    } catch (e) {
-      console.error(e);
-      alert("Parse error: " + e.message);
-    } finally {
-      els.btnParse.disabled = false;
-      els.btnParse.textContent = "Preview Trips";
-    }
-  });
-
-  // DIRECT IMPORT (will fail if iCabbi blocks CORS)
-  els.btnImport.addEventListener('click', async () => {
-    if (isImporting) return;
-
-    const auth = (els.authHeader.value || '').trim();
-    const url = (els.icabbiUrl.value || '').trim();
-
-    if (!auth.startsWith("Basic ")) return alert("Paste your full Authorization header that starts with: Basic ...");
-    if (!/^https?:\/\//i.test(url)) return alert("Invalid iCabbi URL.");
-
-    const selectedAll = parsedBatch.filter(r => r.selected);
-    const selected = parsedBatch.filter(r => r.selected && r.status !== 'error');
-
-    if (!selectedAll.length) return alert("No rows selected.");
-    if (!selected.length) return alert("No importable rows selected (errors are blocked).");
-
-    const mode = els.safetyMode.value;
-    const toSend = (mode === 'one') ? selected.slice(0,1) : selected;
-
-    const ok = confirm(
-      `Direct Import will send ${toSend.length} trip(s) to iCabbi.\n\n` +
-      `If this fails due to CORS, use Export Curl Script instead.\n\nProceed?`
-    );
-    if (!ok) return;
-
-    isImporting = true;
-    els.btnImport.disabled = true;
-    els.importStatus.textContent = "Importing…";
-    setProgress(0);
-
-    let done = 0;
-    let failed = 0;
-
-    for (let i=0;i<toSend.length;i++){
-      const row = toSend[i];
-      row.import = { state: 'sending', text: '' };
-      renderAndUpdate();
-
-      try {
-        const resp = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type":"application/json",
-            "Authorization": auth
-          },
-          body: JSON.stringify(row.payload)
-        });
-
-        const text = await resp.text();
-
-        if (!resp.ok) {
-          row.import = { state: 'failed', text: `${resp.status} ${text}` };
-          failed++;
-        } else {
-          row.import = { state: 'imported', text: `${resp.status} ${text}` };
-        }
-      } catch (e) {
-        // This is what you’ll see if CORS blocks it.
-        row.import = { state: 'failed', text: String(e?.message || e) };
-        failed++;
-      }
-
-      done++;
-      els.importStatus.textContent = `Importing… ${done}/${toSend.length} (Failed: ${failed})`;
-      setProgress(Math.round((done/toSend.length)*100));
-      renderAndUpdate();
-    }
-
-    els.importStatus.textContent = `Done. Imported: ${done - failed}/${done}, Failed: ${failed}`;
-    isImporting = false;
-    renderAndUpdate();
-  });
-
-  // CURL EXPORT (always works)
-  els.btnExportCurl.addEventListener('click', () => {
-    const auth = (els.authHeader.value || '').trim();
-    const url = (els.icabbiUrl.value || '').trim();
-
-    if (!auth.startsWith("Basic ")) return alert("Paste your full Authorization header that starts with: Basic ...");
-    if (!/^https?:\/\//i.test(url)) return alert("Invalid iCabbi URL.");
-
-    const selected = parsedBatch.filter(r => r.selected && r.status !== 'error');
-    if (!selected.length) return alert("No importable rows selected.");
-
-    const lines = [];
-    lines.push(`# PowerShell script generated by your import tool`);
-    lines.push(`# Run in PowerShell. This bypasses browser CORS.`);
-    lines.push(`$headers = @{`);
-    lines.push(`  "Content-Type" = "application/json"`);
-    lines.push(`  "Authorization" = "${auth.replaceAll('"','`"')}"`);
-    lines.push(`}`);
-    lines.push(``);
-
-    selected.forEach((r, i) => {
-      const json = JSON.stringify(r.payload).replaceAll('"','`"');
-      lines.push(`# Trip ${i+1} BookingId: ${r.payload.external_booking_id || ''}`);
-      lines.push(`$body = "${json}"`);
-      lines.push(`try {`);
-      lines.push(`  $resp = Invoke-WebRequest -Uri "${url}" -Method POST -Headers $headers -Body $body`);
-      lines.push(`  Write-Host "OK Trip ${i+1}: $($resp.StatusCode)"`);
-      lines.push(`} catch {`);
-      lines.push(`  Write-Host "FAIL Trip ${i+1}: $($_.Exception.Message)"`);
-      lines.push(`}`);
-      lines.push(``);
-    });
-
-    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
-    const dl = document.createElement('a');
-    dl.href = URL.createObjectURL(blob);
-    dl.download = `icabbi-import-${new Date().toISOString().slice(0,10)}.ps1`;
-    document.body.appendChild(dl);
-    dl.click();
-    dl.remove();
-    URL.revokeObjectURL(dl.href);
-  });
-</script>
 </body>
 </html>
