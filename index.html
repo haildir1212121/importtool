@@ -38,7 +38,7 @@
     .btn:disabled { background: #94a3b8; cursor: not-allowed; }
 
     /* TABLE */
-    .table-wrap { overflow-x: auto; max-height: 600px; border: 1px solid var(--border); border-radius: 8px; margin-top: 16px; }
+    .table-wrap { overflow-x: auto; max-height: 800px; border: 1px solid var(--border); border-radius: 8px; margin-top: 16px; }
     table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1200px; white-space: nowrap; }
     th { position: sticky; top: 0; background: #f8fafc; padding: 12px; text-align: left; border-bottom: 2px solid var(--border); color: #64748b; z-index: 10; }
     td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
@@ -206,13 +206,13 @@
     const finalDest = cleanAddress(rawDest);
 
     // --- SMART TIME OVERRIDE LOGIC ---
-    // Added "432 W 11TH" to the list
+    // Targets (Normalized to Upper Case)
     const targets = [
       "98 E 11TH AVE",
       "715 LINCOLN ST",
       "1485 MARKET ST",
       "990 GARFIELD ST",
-      "432 W 11TH"  // <-- ADDED THIS
+      "432 W 11TH"
     ];
     
     let finalTime = rawTime;
@@ -255,10 +255,12 @@
     };
   }
 
-  // --- 4. RENDER TABLE ---
+  // --- 4. RENDER TABLE (ALL ROWS) ---
   function renderTable(data) {
     els.tableBody.innerHTML = '';
-    data.slice(0, 100).forEach(row => {
+    
+    // REMOVED: .slice(0, 100) -> Now shows ALL data
+    data.forEach(row => {
       const tr = document.createElement('tr');
       
       const isOverride = row.Pu === "23:59";
