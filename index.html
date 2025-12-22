@@ -170,10 +170,13 @@
   function transformRow(row, dateFormatted) {
     const get = (k) => (row[k] || '').toString().trim();
 
+    // --- FIX: Use the new time normalizer here ---
+    const rawTime = normalizeTime(row['Schedule Time']); 
+
     // Raw Fields
     const rawID = get('Booking Id');
     const rawName = get('Client Name');
-    const rawTime = get('Schedule Time');
+    // Note: rawTime is already defined above now
     const rawOrig = get('Origin');
     const rawOrigCity = get('City (Orig)');
     const rawDest = get('Destination');
@@ -237,7 +240,7 @@
       TripID: rawID,
       Date: dateFormatted,
       Name: cleanName,
-      Pu: finalTime,      // Column D
+      Pu: finalTime,       // Column D
       Origin: finalOrigin, // Column E
       "City (Orig)": rawOrigCity,
       "PU Phone": rawPhone,
@@ -254,6 +257,30 @@
       "Unnamed: 19": "", "Unnamed: 20": "", "Unnamed: 21": "", "Unnamed: 22": ""
     };
   }
+  // --- NEW HELPER FUNCTION: PASTE THIS RIGHT AFTER transformRow ---
+  function normalizeTime(val) {
+    if (val === undefined || val === null || val === '') return "";
+
+    // 1. If it's a Number (Excel Decimal, e.g., 0.375), convert to HH:MM
+    if (typeof val === 'number') {
+      // Excel time is fraction of a day. 24 hours * 60 minutes
+      const totalMinutes = Math.round(val * 24 * 60);
+      const hours = Math.floor(totalMinutes / 60) % 24; // % 24 handles midnight wrapping
+      const minutes = totalMinutes % 60;
+      
+      const hStr = String(hours).padStart(2, '0');
+      const mStr = String(minutes).padStart(2, '0');
+      return `${hStr}:${mStr}`;
+    }
+
+    // 2. If it's already a String (e.g. "9:00", "09:00:00"), just clean it
+    let str = val.toString().trim();
+    
+    // Optional: If you see "9:00 AM" or "PM" in your files, you might need extra logic here,
+    // but usually Excel exports standard times or decimals.
+    return str;
+  }
+
 
   // --- 4. RENDER TABLE (ALL ROWS) ---
   function renderTable(data) {
@@ -325,6 +352,8 @@
     }
     alert("Import Complete!");
   });
+  
 </script>
 </body>
 </html>
+
